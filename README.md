@@ -1,14 +1,8 @@
- [中文](https://p3terx.com/archives/build-openwrt-with-github-actions.html)
-
 # Actions-OpenWrt
-
-[![LICENSE](https://img.shields.io/github/license/mashape/apistatus.svg?style=flat-square&label=LICENSE)](https://github.com/P3TERX/Actions-OpenWrt/blob/master/LICENSE)
-![GitHub Stars](https://img.shields.io/github/stars/P3TERX/Actions-OpenWrt.svg?style=flat-square&label=Stars&logo=github)
-![GitHub Forks](https://img.shields.io/github/forks/P3TERX/Actions-OpenWrt.svg?style=flat-square&label=Forks&logo=github)
 
 ## Usage
 
-- 支持GL-inet AXT-1800(192.168.8.1), TR-3000机型(192.168.6.1)，JDC-AX6600(192.168.100.1)，MT5000（仅保证WAN-LAN，不保证LAN-LAN），默认无密码。
+- Поддержка GL-inet AXT-1800(192.168.8.1)
 
 ## Credits
 

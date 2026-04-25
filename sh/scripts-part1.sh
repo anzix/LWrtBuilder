@@ -10,151 +10,103 @@
 # Description: OpenWrt DIY script part 1 (Before Update feeds)
 #
 
-# --- 调试信息：打印所有可能用到的环境变量 ---
-echo "--- 脚本开始执行，正在检查环境变量 ---"
-echo "WORKFLOW_NAME: $WORKFLOW_NAME" # 这是最重要的判断依据！
+# --- Debugging information: Prints all possible environment variables ---
+echo "--- The script has started executing and is checking environment variables ---"
+echo "WORKFLOW_NAME: $WORKFLOW_NAME" # This is the most important
 echo "TAG (from libwrt): $TAG"
 echo "TAG2 (from immortalwrt): $TAG2"
 echo "------------------------------------------"
 
-# --- 根据 WORKFLOW_NAME 执行不同的逻辑 ---
+if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
+   echo ">>> Device detected: $WORKFLOW_NAME. Starting to execute LibWrt-specific modifications"
+   # The logic below always executes, as the workflow is configured for AXT-1800
+   # Define path to kernel-6.12 file
+   KERNEL_FILE="./target/linux/generic/kernel-6.12"
+   cat $KERNEL_FILE
 
-# --- 逻辑块 1: 处理 AXT-1800 和 JDC-AX6600 ---
-if [[ "$WORKFLOW_NAME" == "AXT-1800" || "$WORKFLOW_NAME" == "JDC-AX6600" ]]; then
-    echo ">>> 检测到设备: $WORKFLOW_NAME。开始执行 libwrt 的特定修改"
+   # Check if file exists
+   if [ ! -f "$KERNEL_FILE" ]; then
+     echo "Error: File $KERNEL_FILE not found"
+     exit 1
+   fi
 
-    # 定义kernel-6.12文件的路径
-    KERNEL_FILE="./target/linux/generic/kernel-6.12"
-    cat $KERNEL_FILE
-    
-    # 检查文件是否存在
-    if [ ! -f "$KERNEL_FILE" ]; then
-        echo "错误: 找不到文件 $KERNEL_FILE"
-        exit 1
-    fi
+   # Extract major and minor version number, then assemble full kernel version number
+   MAJOR_VERSION=$(grep -oP 'LINUX_VERSION-\K[0-9.]+' "$KERNEL_FILE" | head -1)
+   MINOR_VERSION=$(grep -oP 'LINUX_VERSION-[0-9.]+ = \K.[0-9]+' "$KERNEL_FILE" | head -1)
+   KERNEL_VERSION="${MAJOR_VERSION}${MINOR_VERSION}"
 
-    # 提取内核版本号
-    MAJOR_VERSION=$(grep -oP 'LINUX_VERSION-\K[0-9.]+' "$KERNEL_FILE" | head -1)
-    MINOR_VERSION=$(grep -oP 'LINUX_VERSION-[0-9.]+ = \K.[0-9]+' "$KERNEL_FILE" | head -1)
-    KERNEL_VERSION="${MAJOR_VERSION}${MINOR_VERSION}"
+   # Check version format and outputs it
+   if [[ ! "$KERNEL_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+     echo "Error: Failed to extract correct kernel version number"
+     exit 1
+   fi
+   echo "Extracted kernel version: $KERNEL_VERSION"
+   echo "HINT: You can use this version via the \$KERNEL_VERSION variable"
 
-    # 验证版本号格式
-    if [[ ! "$KERNEL_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        echo "错误: 无法提取有效的内核版本号"
-    fi
-    echo "提取的内核版本号: $KERNEL_VERSION"
+   # Change the default IP, for AXT1800 it's 192.168.8.1
+   # WARN: Если тут будет больше ipq60xx устройств то надо делать if elif условие
+   sed -i 's/192.168.1.1/192.168.8.1/g' package/base-files/files/bin/config_generate
+   echo "AXT-1800 IP changed to 192.168.8.1"
 
-    # 修改默认IP
-    if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
-        sed -i 's/192.168.1.1/192.168.8.1/g' package/base-files/files/bin/config_generate
-        echo "AXT-1800 IP 修改为 192.168.8.1"
-    elif [[ "$WORKFLOW_NAME" == "JDC-AX6600" ]]; then
-        sed -i 's/192.168.1.1/192.168.100.1/g' package/base-files/files/bin/config_generate
-        echo "JDC-AX6600 IP 修改为 192.168.100.1"
-    fi
+   # Update the Golang version (currently deprecated; comments are retained for easy rollback)
+   # rm -rf feeds/packages/lang/golang && echo "Removing old golang"
+   # git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
+   # cat feeds/packages/lang/golang/golang/Makefile
 
-    # 更新Golang版本（当前已停用，保留注释便于回滚）
-    # rm -rf feeds/packages/lang/golang && echo "删除golang"
-    # git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
+   # Download the corresponding kernel version of Vermagic
+   wget -qO- "https://downloads.immortalwrt.org/snapshots/targets/qualcommax/ipq60xx/kmods/" | grep -oP "$KERNEL_VERSION-1-\K[0-9a-f]+" | head -n 1 > vermagic && echo "Current Vermagic:" && cat vermagic
+   wget https://raw.githubusercontent.com/m0eak/openwrt_patch/refs/heads/main/gl-axt1800/9999-gl-axt1800-dts-change-cooling-level.patch && echo "Download successful" || echo "Download error"
+   mv 9999-gl-axt1800-dts-change-cooling-level.patch ./target/linux/qualcommax/patches-6.12/9999-gl-axt1800-dts-change-cooling-level.patch && echo "Move successful" || echo "Move error"
+   rm package/kernel/mac80211/patches/nss/ath11k/999-902-ath11k-fix-WDS-by-disabling-nwds.patch && echo "Removed patch1 successfully" || echo "Error removing patch1 (file might not exist)"
+   rm package/kernel/mac80211/patches/nss/subsys/999-775-wifi-mac80211-Changes-for-WDS-MLD.patch && echo "Removed patch2 successfully" || echo "Error removing patch2 (file might not exist)"
 
-    # 下载对应内核版本的vermagic
-    wget -qO- "https://downloads.immortalwrt.org/snapshots/targets/qualcommax/ipq60xx/kmods/" | grep -oP "$KERNEL_VERSION-1-\K[0-9a-f]+" | head -n 1 > vermagic && echo "当前Vermagic:" && cat vermagic
-    wget https://raw.githubusercontent.com/m0eak/openwrt_patch/refs/heads/main/gl-axt1800/9999-gl-axt1800-dts-change-cooling-level.patch && echo "下载成功" || echo "下载失败"
-    mv 9999-gl-axt1800-dts-change-cooling-level.patch ./target/linux/qualcommax/patches-6.12/9999-gl-axt1800-dts-change-cooling-level.patch && echo "移动成功" || echo "移动失败"
-    rm -f package/kernel/mac80211/patches/nss/ath11k/999-902-ath11k-fix-WDS-by-disabling-nwds.patch && echo "删除patch1成功"
-    rm -f package/kernel/mac80211/patches/nss/subsys/999-775-wifi-mac80211-Changes-for-WDS-MLD.patch && echo "删除patch2成功"
+   VERMAGIC=$(cat vermagic)
+   echo "VERMAGIC_FIX=${VERMAGIC}" >> $GITHUB_ENV
 
-    VERMAGIC=$(cat vermagic)
-    echo "VERMAGIC_FIX=${VERMAGIC}" >> $GITHUB_ENV
+   # Modify vermagic
+   if [ ! -s ./vermagic ]; then
+     echo "none vermagic"
+   else
+     sed -i '/grep '\''=\[ym\]'\'' $(LINUX_DIR)\/\.config\.set | LC_ALL=C sort | $(MKHASH) md5 > $(LINUX_DIR)\/\.vermagic/s/^/# /' ./include/kernel-defaults.mk
+     sed -i '/$(LINUX_DIR)\/\.vermagic/a \\tcp $(TOPDIR)/vermagic $(LINUX_DIR)/.vermagic' ./include/kernel-defaults.mk
+   fi
 
-    # 修改vermagic
-    if [ ! -s ./vermagic ]; then
-        echo "none vermagic"
-    else
-        sed -i '/grep '\''=\[ym\]'\'' $(LINUX_DIR)\/\.config\.set | LC_ALL=C sort | $(MKHASH) md5 > $(LINUX_DIR)\/\.vermagic/s/^/# /' ./include/kernel-defaults.mk
-        sed -i '/$(LINUX_DIR)\/\.vermagic/a \\tcp $(TOPDIR)/vermagic $(LINUX_DIR)/.vermagic' ./include/kernel-defaults.mk
-    fi
-
-# --- 逻辑块 2: 处理 x86 immortalwrt ---
-elif [[ "$WORKFLOW_NAME" == "x86_immortalwrt" ]]; then
-    echo ">>> 检测到: $WORKFLOW_NAME。开始执行 x86 immortalwrt 的特定修改"
-    
-    # immortalwrt 工作流定义了 TAG2，所以 VERSION2 现在是有效的！
-    VERSION2=${TAG2#v}
-    echo "immortalwrt 当前版本 (VERSION2): $VERSION2"
-
-    # 更新Golang版本（当前已停用，保留注释便于回滚）
-    # rm -rf feeds/packages/lang/golang && echo "删除golang"
-    # git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
-    # cat feeds/packages/lang/golang/golang/Makefile
-
-    # 修改默认IP
-    sed -i 's/192.168.1.1/192.168.100.1/g' package/base-files/files/bin/config_generate
-    echo "x86 IP 修改为 192.168.100.1"
-
-    # 修改版本号
-    if [ -n "$VERSION2" ]; then
-        sed -i "s/replace/$VERSION2/g" $GITHUB_WORKSPACE/files/etc/uci-defaults/zzz_m0eak && echo "VERSION替换成功"
-    else
-        echo "警告: VERSION2 为空，跳过版本号替换。"
-    fi
-
-    # 下载对应内核版本的vermagic
-    if [ -n "$VERSION2" ]; then
-        curl -s "https://downloads.immortalwrt.org/releases/$VERSION2/targets/x86/64/immortalwrt-$VERSION2-x86-64.manifest" | grep kernel | awk '{print $3}' | sed -E 's/.*~([0-9a-f]+)-r[0-9]+$/\1/; s/.*-([0-9a-f]+)$/\1/' > vermagic && echo "Immortalwrt Vermagic Done" && echo "当前Vermagic：" && cat vermagic
-    else
-        echo "警告: VERSION2 为空，无法下载 vermagic。"
-    fi
-
-    # 修改vermagic
-    if [ -s ./vermagic ]; then
-        sed -i '/grep '\''=\[ym\]'\'' $(LINUX_DIR)\/\.config\.set | LC_ALL=C sort | $(MKHASH) md5 > $(LINUX_DIR)\/\.vermagic/s/^/# /' ./include/kernel-defaults.mk
-        sed -i '/$(LINUX_DIR)\/\.vermagic/a \\tcp $(TOPDIR)/vermagic $(LINUX_DIR)/.vermagic' ./include/kernel-defaults.mk
-    else
-        echo "none vermagic, 跳过修改。"
-    fi
-
-# --- 逻辑块 3: 处理 TR-3000 ---
-elif [[ "$WORKFLOW_NAME" == "TR-3000" ]]; then
-    echo ">>> 检测到设备: $WORKFLOW_NAME。开始执行 TR-3000 的特定修改"
-    #sed -i 's/192.168.6.1/192.168.100.209/g' package/base-files/files/bin/config_generate
-    #echo "TR-3000 IP 修改为 192.168.100.209"
-
-# --- 逻辑块 4: 处理 GL-MT3600BE ---
-elif [[ "$WORKFLOW_NAME" == "GL-MT3600BE" ]]; then
-    echo ">>> 检测到设备: $WORKFLOW_NAME。开始执行 MT3600BE 的特定修改"
-
-    CUSTOM_DTS_URL="https://raw.githubusercontent.com/openwrt/openwrt/cced8d95f3caa9f48eaeb4ef2d15426d20afaf16/target/linux/mediatek/dts/mt7987a-glinet-gl-mt3600be.dts"
-    CUSTOM_DTS_TARGET="target/linux/mediatek/dts/mt7987a-glinet-gl-mt3600be.dts"
-    CUSTOM_DTS_TMP="/tmp/mt7987a-glinet-gl-mt3600be.dts"
-
-    if [[ -f "$CUSTOM_DTS_TARGET" ]]; then
-        echo "开始下载自定义 MT3600BE DTS..."
-        curl -fL "$CUSTOM_DTS_URL" -o "$CUSTOM_DTS_TMP"
-
-        echo "校验下载到的 DTS..."
-        grep -q 'GL-MT3600BE' "$CUSTOM_DTS_TMP"
-        grep -q 'cooling-levels' "$CUSTOM_DTS_TMP"
-
-        cp "$CUSTOM_DTS_TMP" "$CUSTOM_DTS_TARGET"
-        echo "已替换 $CUSTOM_DTS_TARGET"
-        echo "cooling-levels 片段:"
-        grep -n 'cooling-levels' "$CUSTOM_DTS_TARGET"
-    else
-        echo "错误: 未找到目标 DTS 文件 $CUSTOM_DTS_TARGET"
-        exit 1
-    fi
-
-    sed -i 's/192.168.1.1/192.168.9.1/g' package/base-files/files/bin/config_generate
-    echo "mt3600be IP 修改为 192.168.9.1"
-
-# --- 逻辑块 5: 处理 GL-MT5000 ---
-elif [[ "$WORKFLOW_NAME" == "GL-MT5000" ]]; then
-    echo ">>> 检测到设备: $WORKFLOW_NAME。开始执行 MT5000 的特定修改"
-    sed -i 's/192.168.1.1/192.168.100.1/g' package/base-files/files/bin/config_generate
-    echo "mt5000 IP 修改为 192.168.100.1"
-else
-    echo ">>> 未匹配到任何已知的 WORKFLOW_NAME ('$WORKFLOW_NAME')。跳过所有设备特定的修改"
+   # --- Logic Block 2: Processing x86 immortalwrt ---
+# elif [[ "$WORKFLOW_NAME" == "x86_immortalwrt" ]]; then
+#     echo ">>> Detected: $WORKFLOW_NAME. Initiating specific modifications to x86 immortalwrt"
+#
+#     # The immortalwrt workflow defines TAG2, so VERSION2 is now valid!
+#     VERSION2=${TAG2#v}
+#     echo "immortalwrt 当前版本 (VERSION2): $VERSION2"
+#
+#     # Update the Golang version (currently deprecated; comments are retained for easy rollback)
+#     # rm -rf feeds/packages/lang/golang && echo "Removing old golang"
+#     # git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
+#     # cat feeds/packages/lang/golang/golang/Makefile
+#
+#     # Change the default IP
+#     sed -i 's/192.168.1.1/192.168.100.1/g' package/base-files/files/bin/config_generate
+#     echo "Change the x86 IP address to 192.168.100.1"
+#
+#     # Download the corresponding kernel version of Vermagic
+#     if [ -n "$VERSION2" ]; then
+#         sed -i "s/replace/$VERSION2/g" $GITHUB_WORKSPACE/files/etc/uci-defaults/zzz && echo "VERSION replacement successful"
+#     else
+#         echo "Warning: VERSION2 is empty, unable to download vermagic."
+#     fi
+#
+#     # Download the corresponding kernel version of Vermagic
+#     if [ -n "$VERSION2" ]; then
+#         curl -s "https://downloads.immortalwrt.org/releases/$VERSION2/targets/x86/64/immortalwrt-$VERSION2-x86-64.manifest" | grep kernel | awk '{print $3}' | sed -E 's/.*~([0-9a-f]+)-r[0-9]+$/\1/; s/.*-([0-9a-f]+)$/\1/' > vermagic && echo "Immortalwrt Vermagic Done" && echo "Current Vermagic: " && cat vermagic
+#     else
+#         echo "Warning: VERSION2 is empty, unable to download vermagic."
+#     fi
+#
+#     # Modify Vermagic
+#     if [ -s ./vermagic ]; then
+#         sed -i '/grep '\''=\[ym\]'\'' $(LINUX_DIR)\/\.config\.set | LC_ALL=C sort | $(MKHASH) md5 > $(LINUX_DIR)\/\.vermagic/s/^/# /' ./include/kernel-defaults.mk
+#         sed -i '/$(LINUX_DIR)\/\.vermagic/a \\tcp $(TOPDIR)/vermagic $(LINUX_DIR)/.vermagic' ./include/kernel-defaults.mk
+#     else
+#         echo "none Vermagic, skip the modification."
+#     fi
 fi
-
-echo "--- DIY Part 1 脚本执行完毕 ---"
