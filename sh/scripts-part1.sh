@@ -56,9 +56,7 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
    # Download the corresponding kernel version of Vermagic
    wget -qO- "https://downloads.immortalwrt.org/snapshots/targets/qualcommax/ipq60xx/kmods/" | grep -oP "$KERNEL_VERSION-1-\K[0-9a-f]+" | head -n 1 > vermagic && echo "Current Vermagic:" && cat vermagic
    wget https://raw.githubusercontent.com/m0eak/openwrt_patch/refs/heads/main/gl-axt1800/9999-gl-axt1800-dts-change-cooling-level.patch && echo "Download successful" || echo "Download error"
-   mv 9999-gl-axt1800-dts-change-cooling-level.patch ./target/linux/qualcommax/patches-6.12/9999-gl-axt1800-dts-change-cooling-level.patch && echo "Move successful" || echo "Move error"
-   rm package/kernel/mac80211/patches/nss/ath11k/999-902-ath11k-fix-WDS-by-disabling-nwds.patch && echo "Removed patch1 successfully" || echo "Error removing patch1 (file might not exist)"
-   rm package/kernel/mac80211/patches/nss/subsys/999-775-wifi-mac80211-Changes-for-WDS-MLD.patch && echo "Removed patch2 successfully" || echo "Error removing patch2 (file might not exist)"
+   mv 9999-gl-axt1800-dts-change-cooling-level.patch ./target/linux/qualcommax/dts/9999-gl-axt1800-dts-change-cooling-level.patch && echo "Move successful" || echo "Move error"
 
    VERMAGIC=$(cat vermagic)
    echo "VERMAGIC_FIX=${VERMAGIC}" >> $GITHUB_ENV
