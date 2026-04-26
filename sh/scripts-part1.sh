@@ -8,7 +8,6 @@
 # https://github.com/P3TERX/Actions-OpenWrt
 # File name: diy-part1.sh
 # Description: OpenWrt DIY script part 1 (Before Update feeds)
-#
 
 # --- Debugging information: Prints all possible environment variables ---
 echo "--- The script has started executing and is checking environment variables ---"
@@ -20,7 +19,7 @@ echo "------------------------------------------"
 if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
    echo ">>> Device detected: $WORKFLOW_NAME. Starting to execute LibWrt-specific modifications"
    # INFO: Главный выбор версии ядра на котором будет прошивка устройства, берётся
-   # с репозитория github LiBwrt по пути target/linux/generic
+   # с репозитория github LiBwrt (с указанной веткой) по пути target/linux/generic
    #
    # The logic below always executes, as the workflow is configured for AXT-1800
    # Define path to kernel-6.12 file
@@ -44,7 +43,6 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
      exit 1
    fi
    echo "Extracted kernel version: $KERNEL_VERSION"
-   echo "HINT: You can use this version via the \$KERNEL_VERSION variable"
 
    # Change the default IP, for AXT1800 it's 192.168.8.1
    # WARN: Если тут будет больше ipq60xx устройств то надо делать if elif условие
@@ -58,8 +56,11 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
 
    # Download the corresponding kernel version of Vermagic
    wget -qO- "https://downloads.immortalwrt.org/snapshots/targets/qualcommax/ipq60xx/kmods/" | grep -oP "$KERNEL_VERSION-1-\K[0-9a-f]+" | head -n 1 > vermagic && echo "Current Vermagic:" && cat vermagic
-   wget https://raw.githubusercontent.com/m0eak/openwrt_patch/refs/heads/main/gl-axt1800/9999-gl-axt1800-dts-change-cooling-level.patch && echo "Download successful" || echo "Download error"
-   mv 9999-gl-axt1800-dts-change-cooling-level.patch ./target/linux/qualcommax/dts/9999-gl-axt1800-dts-change-cooling-level.patch && echo "Move successful" || echo "Move error"
+
+   # Download patches and move to cloned LiBwrt in corresponding path.
+   wget https://raw.githubusercontent.com/m0eak/openwrt_patch/refs/heads/main/gl-axt1800/9999-gl-axt1800-dts-change-cooling-level.patch \
+      -O ./target/linux/qualcommax/patches-6.12/9999-gl-axt1800-dts-change-cooling-level.patch \
+      && echo "Download successful" || echo "Download error"
 
    VERMAGIC=$(cat vermagic)
    echo "VERMAGIC_FIX=${VERMAGIC}" >> $GITHUB_ENV
