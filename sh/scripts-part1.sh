@@ -19,6 +19,9 @@ echo "------------------------------------------"
 
 if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
    echo ">>> Device detected: $WORKFLOW_NAME. Starting to execute LibWrt-specific modifications"
+   # INFO: Главный выбор версии ядра на котором будет прошивка устройства, берётся
+   # с репозитория github LiBwrt по пути target/linux/generic
+   #
    # The logic below always executes, as the workflow is configured for AXT-1800
    # Define path to kernel-6.12 file
    KERNEL_FILE="./target/linux/generic/kernel-6.12"

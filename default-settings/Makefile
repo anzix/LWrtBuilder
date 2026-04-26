@@ -1,6 +1,6 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=default-settings-m0eak
+PKG_NAME:=default-settings
 PKG_VERSION:=1
 PKG_RELEASE:=1
 PKG_LICENSE:=GPLv3
@@ -8,7 +8,7 @@ PKG_LICENSE_FILES:=LICENSE
 
 include $(INCLUDE_DIR)/package.mk
 
-define Package/default-settings-m0eak
+define Package/default-settings
 	SECTION:=luci
 	CATEGORY:=LuCI
 	TITLE:=My Default Settings
@@ -16,7 +16,7 @@ define Package/default-settings-m0eak
 	DEPENDS:=+luci
 endef
 
-define Package/default-settings-m0eak/description
+define Package/default-settings/description
 	My Default Settings.
 endef
 
@@ -24,9 +24,9 @@ endef
 define Build/Compile
 endef
 
-define Package/default-settings-m0eak/install
+define Package/default-settings/install
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/zzz_m0eak $(1)/etc/uci-defaults/zzz_m0eak
+	$(INSTALL_BIN) ./files/zzz $(1)/etc/uci-defaults/zzz
 endef
 
-$(eval $(call BuildPackage,default-settings-m0eak))
+$(eval $(call BuildPackage,default-settings))
