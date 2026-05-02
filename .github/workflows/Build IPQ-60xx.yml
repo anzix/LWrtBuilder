@@ -189,6 +189,7 @@ jobs:
     - name: Apply custom .config (defconfig)
       run: |
         [ -e "${{ matrix.config_file }}" ] && mv ${{ matrix.config_file }} openwrt/.config
+        cd openwrt
         ls -la
         echo "Content .config"
         cat .config
