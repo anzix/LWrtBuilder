@@ -10,8 +10,8 @@ env:
   REPO_URL_IMM: https://github.com/LiBwrt/openwrt-6.x
   REPO_BRANCH: 25.12-nss
   FEEDS_CONF: feeds.conf.default
-  DIY_P1_SH: ./sh/scripts-part1.sh
-  DIY_P2_SH: ./sh/scripts-part2.sh
+  SPECIFIC_SETUP_SH: ./sh/specific-setup.sh
+  GIT_CLONE_SH: ./sh/git-clone.sh
   DEFAULT_SETTING: ./default-settings
   UPLOAD_BIN_DIR: true
   UPLOAD_FIRMWARE: true
@@ -71,24 +71,30 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        # Installing dependencies for compilation, inspired by lxhao61/Actions-OpenWrt
+        # Installing dependencies for compilation
+
         sudo rm -rf /etc/apt/sources.list.d/*
+
         sudo -E apt-get -qq update
         sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake \
-        autopoint binutils bison build-essential bzip2 ccache cmake cpio curl \
-        device-tree-compiler fastjar flex gawk gettext gcc-multilib \
-        g++-multilib git gperf haveged help2man intltool libc6-dev-i386 \
-        libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev \
-        libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
-        libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build \
-        p7zip p7zip-full patch pkgconf python3 python3-pyelftools \
-        python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
-        swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+          autopoint binutils bison build-essential bzip2 ccache cmake cpio curl \
+          device-tree-compiler fastjar flex gawk gettext gcc-multilib \
+          g++-multilib git gperf haveged help2man intltool libc6-dev-i386 \
+          libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+          libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
+          libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build \
+          p7zip p7zip-full patch pkgconf python3 python3-pyelftools \
+          python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
+          swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+
         sudo -E apt-get -y autoremove --purge
         sudo -E apt-get -y clean
         sudo timedatectl set-timezone "$TZ"
+
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
+
+        # Saving variables for further work
         echo "WORKFLOW_NAME=${{ matrix.workflow_name }}" >> $GITHUB_ENV
         if [ -n "${{ github.event.inputs.tag }}" ]; then
           echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
@@ -99,27 +105,42 @@ jobs:
     - name: Clone source code
       working-directory: /workdir
       run: |
+        # Check space
         df -hT $PWD
+
+        # Clone with specified branch TAG and rename it to `openwrt`
         git clone -b "${TAG}" $REPO_URL_IMM --single-branch --depth 1 openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
+        git fetch --tags
 
         # Removing Chinese Mirrors in cloned LiBwrt
         PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
         if [ -f "$PROJECT_MIRRORS_FILE" ]; then
           sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
         fi
-        git fetch --tags
+
+        # Save current path
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
 
-    - name: Load custom feeds (executes scripts-part1.sh)
+    - name: Update feeds
       run: |
         cd openwrt
+
+        # If there is a feeds.conf.default (containing custom feeds) file in the
+        # root of directory, then copy it
         [ -e $GITHUB_WORKSPACE/$FEEDS_CONF ] && cp $GITHUB_WORKSPACE/$FEEDS_CONF ./feeds.conf.default
+
+        # Update feeds
         ./scripts/feeds update -a
-        chmod +x $GITHUB_WORKSPACE/$DIY_P1_SH
-        # Executes scripts-part1.sh
-        $GITHUB_WORKSPACE/$DIY_P1_SH
+
+    - name: Performing a specific setup (1st script)
+      run: |
+        cd openwrt
+        chmod +x $GITHUB_WORKSPACE/$SPECIFIC_SETUP_SH
+
+        # Executes specific-setup.sh
+        $GITHUB_WORKSPACE/$SPECIFIC_SETUP_SH
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
@@ -129,10 +150,10 @@ jobs:
       run: |
         echo "Extracting the plugin list from the source configuration file ${{ matrix.config_file }}..."
         grep 'luci-app-' ${{ matrix.config_file }} | \
-        grep -v '^#' | \
-        grep -v 'is not set' | \
-        sed -e 's/CONFIG_PACKAGE_//g' -e 's/=y//g' | \
-        sort > packages.txt || true
+          grep -v '^#' | \
+          grep -v 'is not set' | \
+          sed -e 's/CONFIG_PACKAGE_//g' -e 's/=y//g' | \
+          sort > packages.txt || true
 
         echo "Check the generated file: "
         if [ -s packages.txt ]; then
@@ -149,16 +170,25 @@ jobs:
         name: package-list-${{ matrix.device }}
         path: ${{ github.workspace }}/packages.txt
 
-    - name: Load custom configuration (executes scripts-part2.sh)
+    - name: Move custom init scripts for "UCI defaults" first boot (default-settings)
       run: |
-        # Move custom configuration to cloned LiBwrt in package default-settings (overwriting)
+        # Moves scripts and other file (if exist) that runs once when the device
+        # is first started (default-settings). Overwriting the LiBwrt files.
+        # In the unpacked firmware archive, it is located inside /etc/uci-defaults/
         [ -e $GITHUB_WORKSPACE/$DEFAULT_SETTING ] && mv $GITHUB_WORKSPACE/$DEFAULT_SETTING openwrt/package/default-settings
         [ -d $GITHUB_WORKSPACE/files ] && mv $GITHUB_WORKSPACE/files openwrt/files
-        [ -e "${{ matrix.config_file }}" ] && mv ${{ matrix.config_file }} openwrt/.config
+
+    - name: Performing git cloning external packages (2nd script)
+      run: |
         cd openwrt
-        chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH
-        # Executes scripts-part2.sh
-        $GITHUB_WORKSPACE/$DIY_P2_SH
+        chmod +x $GITHUB_WORKSPACE/$GIT_CLONE_SH
+
+        # Executes git-clone.sh
+        $GITHUB_WORKSPACE/$GIT_CLONE_SH
+
+    - name: Apply custom .config (defconfig)
+      run: |
+        [ -e "${{ matrix.config_file }}" ] && mv ${{ matrix.config_file }} openwrt/.config
         ls -la
         echo "Content .config"
         cat .config
@@ -180,12 +210,16 @@ jobs:
          make download -j$(nproc) || make download -j1 V=s
          find dl -size -1024c -exec rm -f {} \;
 
-    - name: Build firmware
+    - name: Compile firmware
       run: |
+        echo "Check space before compilation:"
         df -hT
-        cd openwrt
+
         echo "Compilation is performed using the $(nproc) thread..."
+        cd openwrt
         make -j$(expr $(nproc) + 1) || make -j1 V=s
+
+        echo "Check space after compilation:"
         df -hT
 
     - name: Clean up temporary files after compilation

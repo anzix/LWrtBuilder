@@ -1,5 +1,16 @@
 #!/bin/sh
+#
+# Beware! This script will be in /rom/etc/uci-defaults/ as part of the image.
+# Uncomment lines to apply:
+#
+# Settings up root password
+# root_password=""
+
+# Log potential errors
+exec >/tmp/setup.log 2>&1
+
 sleep 10s
+
 if [ -x "$(command -v opkg)" ]; then
     PACKAGE_MANAGER="opkg list-installed"
     echo "opkg package manager detected." >&2
@@ -11,13 +22,62 @@ else
     exit 1
 fi
 
-until [ "$( $PACKAGE_MANAGER 2>/dev/null| grep -c "^kernel")" -ne '0' ];
+# Checks if the main kernel package is in the firmware.
+until [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^kernel")" -ne '0' ];
 do
   sleep 1
 done
 
+# Settings up root password. If variable `root_password` not set - skipping
+if [ -n "$root_password" ]; then
+  (echo "$root_password"; sleep 1; echo "$root_password") | passwd > /dev/null
+fi
+
+# ext(end)part(ition).sh
+# Script for easy increasing the space in /overlay (rootfs) using sdcard (if supported)
 chmod +x /usr/share/extpart.sh
 ln -s /usr/share/extpart.sh /bin/extpart
+
+# Change the default IP
+# More options: https://openwrt.org/docs/guide-user/network/network_configuration
+#
+# For 24.10 and earlier, the 'netmask' will default to '255.255.255.0'
+# Example: 192.168.1.1
+#
+# But, make sure to use CIDR notation for 25.12 and later
+# Example: 192.168.1.1/24
+if [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
+   uci set network.lan.ipaddr="192.168.8.1/24"
+   uci commit network
+fi
+
+# Basic system settings (time zone, hostname, ntp and etc)
+TIMEZONE="$(curl -s https://ipinfo.io/timezone)"
+uci set system.@system[0].timezone="${TIMEZONE}"
+uci set system.@system[0].zonename="${TIMEZONE}"
+# uci set system.@system[0].hostname=''
+uci del system.ntp.server
+uci add_list system.ntp.server='time.apple.com'
+uci add_list system.ntp.server='time.cloudflare.com'
+uci add_list system.ntp.server='0.openwrt.pool.ntp.org'
+uci add_list system.ntp.server='ntp.tencent.com'
+uci commit system
+
+# Configure uhttpd for HTTPS
+# Generate selfsinged certificate for HTTPS, they are missing by default.
+px5g selfsigned -newkey rsa:2048 -days 3650 \
+  -keyout /etc/uhttpd.key \
+  -out /etc/uhttpd.crt \
+  -subj '/CN=localhost'
+uci set uhttpd.main.redirect_https=0
+uci set uhttpd.main.listen_https='0.0.0.0:443'
+uci commit uhttpd
+/etc/init.d/uhttpd restart
+
+# Configure ttyd
+# Remove login password required when accessing terminal
+uci set ttyd.@ttyd[0].command='/bin/bash --login'
+uci commit ttyd
 
 # Set default theme
 # Hints:
@@ -27,12 +87,14 @@ ln -s /usr/share/extpart.sh /bin/extpart
 # Path: `/rom/www/luci-static`
 if [ "$( $PACKAGE_MANAGER 2>/dev/null| grep -c "^luci-theme-argon")" -ne '0' ];then
   uci set luci.main.mediaurlbase='/luci-static/argon'
+  uci set argon.@global[0].online_wallpaper='none'
+  uci delete argon.@global[0].bing_background
+  uci commit argon
   uci commit luci
 else
    uci set luci.main.mediaurlbase='/luci-static/bootstrap'
    uci commit luci
 fi
-
 
 # Set LuCI apply/rollback timeouts
 uci set luci.apply.rollback='30' # Таймаут автоматического отката настроек в секундах, default 90 second
@@ -42,7 +104,7 @@ uci set luci.apply.display='1' # Включает визуальный инди�
 uci commit luci
 
 # Configure fancontrol if package and AXT1800 board are detected
-if [ "$( $PACKAGE_MANAGER 2>/dev/null| grep -c "^luci-app-fancontrol")" -ne '0' ] && [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
+if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^luci-app-fancontrol")" -ne '0' ] && [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
   uci set fancontrol.settings.enabled='1'
   uci set fancontrol.settings.fan_file='/sys/devices/virtual/thermal/cooling_device1/cur_state'
   uci set fancontrol.settings.start_speed='65'
@@ -56,7 +118,6 @@ if [ "$( $PACKAGE_MANAGER 2>/dev/null| grep -c "^luci-app-fancontrol")" -ne '0' 
   # каждый день в 09:30 (утром агресивнее)
   # echo "30 9 * * * uci set fancontrol.settings.start_temp='65' && uci commit fancontrol && /etc/init.d/fancontrol restart" >> /etc/crontabs/root
 fi
-
 uci commit
 
 # Configure turboacc if package and AXT1800 board are detected
@@ -67,7 +128,7 @@ if [ "$( $PACKAGE_MANAGER 2>/dev/null| grep -c "turboacc")" -ne '0' ] && [ "$(gr
   /etc/init.d/turboacc restart
 fi
 
-# Cosmetic change for cpuusage if it exists
+# Cosmetic change for command `cpuusage` if it exists
 if [ -e /sbin/cpuusage ];then
   sed -i 's/HWE:/NSS:/' /sbin/cpuusage
 fi
@@ -85,5 +146,8 @@ fi
 if [ -e /sys/class/leds/white:system/brightness ] && [ "$(grep -c "00 05 * * * echo "1" > /sys/class/leds/white:system/brightness" /etc/crontabs/root)" -eq '0' ];then
   echo "00 05 * * * echo 1 > /sys/class/leds/white:system/brightness" >> /etc/crontabs/root
 fi
+
+# Restart the network
+/etc/init.d/network restart
 
 exit 0

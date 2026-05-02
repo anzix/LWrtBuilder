@@ -59,6 +59,7 @@ for repo in "${!REPOS[@]}"; do
 done
 
 echo "Cloning of all repositories finished"
+
 cd $TARGET_DIR/turboacc/luci-app*
 if [ "$(ls -la | grep -c "Makefile")" -eq '0' ]; then
     echo "Makefile not found, stopping GitHub Action"
