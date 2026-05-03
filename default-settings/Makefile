@@ -26,7 +26,7 @@ endef
 
 define Package/default-settings/install
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/99-init-settings $(1)/etc/uci-defaults/99-init-settings
+	$(INSTALL_BIN) ./files/zzz-default-settings $(1)/etc/uci-defaults/zzz-default-settings
 endef
 
 $(eval $(call BuildPackage,default-settings))

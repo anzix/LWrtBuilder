@@ -14,7 +14,11 @@
 
     Переходим в `System` - `Backup / Flash Firmware`, в `Flash new firmware image`
     жмём `Flash image...` выбираем `libwrt-qualcommax-ipq60xx-glinet_gl-axt1800-squashfs-sysupgrade.bin`
-    и прошиваем
+
+    ВНИМАНИЕ: Убираем галочку `Keep settings and retain the current configuration`,
+    т.к устройство должно загрузится начисто
+
+    И прошиваем нажав `Continue`
 
 ## Проблемы и способы их решения
 

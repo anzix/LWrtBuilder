@@ -1,0 +1,187 @@
+#!/bin/sh
+
+set -x
+
+# Beware! This script will be in /rom/etc/uci-defaults/ as part of the image.
+# Uncomment lines to apply:
+#
+# Settings up root password
+# root_password=""
+
+# Log potential errors
+exec >/tmp/setup.log 2>&1
+
+sleep 10s
+
+if [ -x "$(command -v opkg)" ]; then
+   PACKAGE_MANAGER="opkg list-installed"
+   echo "opkg package manager detected." >&2
+elif [ -x "$(command -v apk)" ]; then
+   PACKAGE_MANAGER="apk list --installed"
+   echo "apk package manager detected." >&2
+else
+   echo "Could not find a valid package manager." >&2
+   exit 1
+fi
+
+# Checks if the main kernel package is in the firmware.
+until [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^kernel")" -ne '0' ];
+do
+  sleep 1
+done
+
+# Settings up root password. If variable `root_password` not set - skipping
+if [ -n "$root_password" ]; then
+   (echo "$root_password"; sleep 1; echo "$root_password") | passwd > /dev/null
+fi
+
+# ext(end)part(ition).sh
+# Script for easy increasing the space in /overlay (rootfs) using sdcard (if supported)
+chmod +x /usr/share/extpart.sh
+ln -s /usr/share/extpart.sh /bin/extpart
+
+# Change the default IP
+# More options: https://openwrt.org/docs/guide-user/network/network_configuration
+#
+# For 24.10 and earlier, the 'netmask' will default to '255.255.255.0'
+# Example: 192.168.1.1
+#
+# But, make sure to use CIDR notation for 25.12 and later
+# Example: 192.168.1.1/24
+if [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
+   uci set network.lan.ipaddr="192.168.8.1/24"
+   uci commit network
+fi
+
+# Basic system settings (time zone, hostname, ntp and etc)
+uci set system.@system[0].timezone="Asia/Yekaterinburg"
+uci set system.@system[0].zonename="Asia/Yekaterinburg"
+# uci set system.@system[0].hostname=''
+uci del system.ntp.server
+uci add_list system.ntp.server='time.apple.com'
+uci add_list system.ntp.server='time.cloudflare.com'
+uci add_list system.ntp.server='0.openwrt.pool.ntp.org'
+uci add_list system.ntp.server='ntp.tencent.com'
+uci commit system
+
+# System Log
+# uci set system.@system[0].log_size='512'
+# uci set system.@system[0].log_ip='127.0.0.1'
+# uci set system.@system[0].log_proto='tcp'
+# uci set system.@system[0].log_file='/root/system.log'
+# uci set system.@system[0].conloglevel='8'
+# uci set system.@system[0].cronloglevel='5'
+# uci commit system
+
+# Configure uhttpd for HTTPS
+# Generate selfsinged certificate for HTTPS, they are missing by default.
+if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^openssl-util")" -ne '0' ];then
+   openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+       -keyout /etc/uhttpd.key \
+       -out /etc/uhttpd.crt \
+       -subj "/CN=openwrt" 2>/dev/null || true
+   uci set uhttpd.main.redirect_https=0
+   uci set uhttpd.main.listen_https='0.0.0.0:443'
+   uci commit uhttpd
+   /etc/init.d/uhttpd restart
+fi
+
+# Configure ttyd
+if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^ttyd")" -ne '0' ];then
+   # Remove login password required when accessing terminal
+   uci set ttyd.@ttyd[0].command='/bin/bash --login'
+   # Enables SSL (HTTPS) support
+   uci set ttyd.cfg01a8ea.ssl='1'
+   uci set ttyd.cfg01a8ea.ssl_cert='/etc/uhttpd.crt'
+   uci set ttyd.cfg01a8ea.ssl_key='/etc/uhttpd.key'
+   # Logs
+   uci set ttyd.cfg01a8ea.debug='7'
+   uci commit ttyd
+   /etc/init.d/ttyd restart
+fi
+
+
+# Configure tailscale
+# Removes traffic logging from devices that send it to log.tailscale.com.
+# https://forum.routerich.ru/t/instrukcziya-dlya-podklyucheniya-udalyonnogo-dostupa-s-pomoshhyu-tailscale/766/21
+# if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^tailscale")" -ne '0' ];then
+#    if [ "$( grep -c "no-logs-no-support'")" -ne '0' ] ;then
+#       sed -i '/procd_set_param command /a\  procd_append_param command --no-logs-no-support' /etc/init.d/tailscale
+#       sed -i 's|/usr/sbin/tailscaled --cleanup|/usr/sbin/tailscaled --cleanup --no-logs-no-support|g'  /etc/init.d/tailscale
+#    fi
+#    uci commit tailscale
+# fi
+
+
+# Set default theme
+# Hints:
+# `/luci-static/bootstrap` default bootstrap
+# `/luci-static/argon` argon, from package `luci-theme-argon`
+# `/luci-static/aurora` aurora, from package `luci-theme-aurora`
+# Path: `/rom/www/luci-static`
+if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^luci-theme-argon")" -ne '0' ];then
+   uci set luci.main.mediaurlbase='/luci-static/argon'
+   uci set argon.@global[0].online_wallpaper='none'
+   uci delete argon.@global[0].bing_background
+   uci commit argon
+   uci commit luci
+else
+   uci set luci.main.mediaurlbase='/luci-static/bootstrap'
+   uci commit luci
+fi
+
+# Set LuCI apply/rollback timeouts
+uci set luci.apply.rollback='30' # Таймаут автоматического отката настроек в секундах, default 90 second
+uci set luci.apply.holdoff='2' # Задержка перед началом применения изменений, default 4
+uci set luci.apply.timeout='3' # Сколько времени LuCI ждёт ответ от процесса применения конфигурации, default 5
+uci set luci.apply.display='1' # Включает визуальный индикатор применения настроек в LuCI, default 1.5
+uci commit luci
+
+# Configure fancontrol if package and AXT1800 board are detected
+if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^luci-app-fancontrol")" -ne '0' ] && [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
+   uci set fancontrol.settings.enabled='1'
+   uci set fancontrol.settings.fan_file='/sys/devices/virtual/thermal/cooling_device1/cur_state'
+   uci set fancontrol.settings.start_speed='65'
+   uci set fancontrol.settings.start_temp='70'
+   uci commit fancontrol
+   /etc/init.d/fancontrol restart
+
+   # Add cron jobs for temperature schedule
+   # каждый день в 20:00 (вечером тише)
+   # echo "0 20 * * * uci set fancontrol.settings.start_temp='75' && uci commit fancontrol && /etc/init.d/fancontrol restart" >> /etc/crontabs/root
+   # каждый день в 09:30 (утром агресивнее)
+   # echo "30 9 * * * uci set fancontrol.settings.start_temp='65' && uci commit fancontrol && /etc/init.d/fancontrol restart" >> /etc/crontabs/root
+fi
+uci commit
+
+# Configure turboacc if package and AXT1800 board are detected
+if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "turboacc")" -ne '0' ] && [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
+   uci set turboacc.config.fullcone_nat6='0'
+   uci set turboacc.config.bbr_cca='0'
+   uci set turboacc.config.sw_flow='0'
+   /etc/init.d/turboacc restart
+fi
+
+# Cosmetic change for command `cpuusage` if it exists
+if [ -e /sbin/cpuusage ];then
+   sed -i 's/HWE:/NSS:/' /sbin/cpuusage
+fi
+
+# Add cron job for ramfree (drop caches) if package is installed
+if [ "$( $PACKAGE_MANAGER 2>/dev/null| grep -c "ramfree")" -ne '0' ] && [ "$(grep -c "/proc/sys/vm/drop_caches" /etc/crontabs/root)" -eq '0' ];then
+   echo "0 */1 * * * sync && echo 3 > /proc/sys/vm/drop_caches" >> /etc/crontabs/root
+fi
+
+# Add cron jobs for LED schedule (AXT1800 specific)
+if [ -e /sys/class/leds/white:system/brightness ] && [ "$(grep -c "30 23 * * * echo "0" > /sys/class/leds/white:system/brightness" /etc/crontabs/root)" -eq '0' ];then
+   echo "30 23 * * * echo 0 > /sys/class/leds/white:system/brightness" >> /etc/crontabs/root
+fi
+
+if [ -e /sys/class/leds/white:system/brightness ] && [ "$(grep -c "00 05 * * * echo "1" > /sys/class/leds/white:system/brightness" /etc/crontabs/root)" -eq '0' ];then
+   echo "00 05 * * * echo 1 > /sys/class/leds/white:system/brightness" >> /etc/crontabs/root
+fi
+
+# Restart the network
+/etc/init.d/network restart
+
+exit 0

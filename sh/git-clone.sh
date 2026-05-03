@@ -17,10 +17,15 @@
 TARGET_DIR="$PWD/package"
 
 # Define repositories and branches to clone
+# INFO: At the end, after =, it's a branch.
 declare -A REPOS=(
     ["https://github.com/chenmozhijin/turboacc"]="" # Used by: CONFIG_PACKAGE_luci-app-turboacc=y
-    ["https://github.com/qlxi/fancontrol"]="" # Used by: CONFIG_PACKAGE_fancontrol=y
+    ["https://github.com/m0eak/fancontrol"]="" # Used by: CONFIG_PACKAGE_fancontrol=y
     ["https://github.com/sirpdboy/luci-app-partexp"]="" # Used by: CONFIG_PACKAGE_luci-app-partexp=y
+    ["https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git"]=""
+    ["https://github.com/nikkinikki-org/OpenWrt-nikki"]=""
+    ["https://github.com/nikkinikki-org/OpenWrt-momo"]=""
+    ["https://github.com/Slava-Shchipunov/awg-openwrt"]=""
 )
 
 # Clone repositories

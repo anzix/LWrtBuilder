@@ -86,7 +86,7 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
 #
 #     # Download the corresponding kernel version of Vermagic
 #     if [ -n "$VERSION2" ]; then
-#         sed -i "s/replace/$VERSION2/g" $GITHUB_WORKSPACE/files/etc/uci-defaults/99-init-settings && echo "VERSION replacement successful"
+#         sed -i "s/replace/$VERSION2/g" $GITHUB_WORKSPACE/files/etc/uci-defaults/zzz-default-settings && echo "VERSION replacement successful"
 #     else
 #         echo "Warning: VERSION2 is empty, unable to download vermagic."
 #     fi
