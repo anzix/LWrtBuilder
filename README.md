@@ -2,7 +2,12 @@
 
 ## Usage
 
-- Поддержка GL-inet AXT-1800 (192.168.8.1)
+- Поддержка GL-inet AXT-1800
+
+  **Доступ**
+
+  - IP: `192.168.8.1`
+  - PORT: `22`
 
   **Прошивка**
 
@@ -15,10 +20,11 @@
     Переходим в `System` - `Backup / Flash Firmware`, в `Flash new firmware image`
     жмём `Flash image...` выбираем `libwrt-qualcommax-ipq60xx-glinet_gl-axt1800-squashfs-sysupgrade.bin`
 
-    ВНИМАНИЕ: Убираем галочку `Keep settings and retain the current configuration`,
-    т.к устройство должно загрузится начисто
+    > [!WARNING]
+    > Убираем галочку `Keep settings and retain the current configuration`, т.к
+    > устройство должно загрузится начисто
 
-    И прошиваем нажав `Continue`
+    После прошиваем нажав `Continue`
 
 ## Проблемы и способы их решения
 
