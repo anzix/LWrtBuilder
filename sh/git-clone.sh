@@ -19,12 +19,32 @@ TARGET_DIR="$PWD/package"
 # Define repositories and branches to clone
 # INFO: At the end, after =, it's a branch.
 declare -A REPOS=(
-    ["https://github.com/chenmozhijin/turboacc"]="" # Used by: CONFIG_PACKAGE_luci-app-turboacc=y
-    ["https://github.com/m0eak/fancontrol"]="" # Used by: CONFIG_PACKAGE_fancontrol=y
-    ["https://github.com/sirpdboy/luci-app-partexp"]="" # Used by: CONFIG_PACKAGE_luci-app-partexp=y
+
+    # Сетевой оптимизатор для OpenWrt роутера
+    # Used by: CONFIG_PACKAGE_luci-app-turboacc=y
+    ["https://github.com/chenmozhijin/turboacc"]=""
+
+    # Регулировщик вентиляторов на роутере (если есть)
+    # Used by: CONFIG_PACKAGE_fancontrol=y
+    ["https://github.com/m0eak/fancontrol"]=""
+
+    # Автоматически получает отформатированное расширение раздела и автоматически
+    # монтирует его
+    # Used by: CONFIG_PACKAGE_luci-app-partexp=y
+    # ["https://github.com/sirpdboy/luci-app-partexp"]=""
+
+    # Данный репозиторий отсюда более новый и с исправлениями, в отличие от
+    # официального репозитория ImmortalWrt
+    # Used by: CONFIG_PACKAGE_luci-app-tailscale-community=y
     ["https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git"]=""
+
+    # Used by: CONFIG_PACKAGE_luci-app-nikki=y
     ["https://github.com/nikkinikki-org/OpenWrt-nikki"]=""
+
+    # Used by: CONFIG_PACKAGE_luci-app-momo=y
     ["https://github.com/nikkinikki-org/OpenWrt-momo"]=""
+
+    # Used by: CONFIG_PACKAGE_luci-proto-amneziawg=y
     ["https://github.com/Slava-Shchipunov/awg-openwrt"]=""
 )
 

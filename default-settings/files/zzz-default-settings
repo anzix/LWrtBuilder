@@ -8,6 +8,10 @@ set -x
 # Settings up root password
 # root_password=""
 
+# Мои заметки
+# 1. На этом этапе делать `/etc/init.d/<service> restart` нет нужды, система
+#    ещё не инициализирована на данном этапе.
+
 # Log potential errors
 exec >/tmp/setup.log 2>&1
 
@@ -83,7 +87,6 @@ if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^openssl-util")" -ne '0' ];then
    uci set uhttpd.main.redirect_https=0
    uci set uhttpd.main.listen_https='0.0.0.0:443'
    uci commit uhttpd
-   /etc/init.d/uhttpd restart
 fi
 
 # Configure ttyd
@@ -97,7 +100,6 @@ if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^ttyd")" -ne '0' ];then
    # Logs
    uci set ttyd.cfg01a8ea.debug='7'
    uci commit ttyd
-   /etc/init.d/ttyd restart
 fi
 
 
@@ -122,7 +124,7 @@ fi
 if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^luci-theme-argon")" -ne '0' ];then
    uci set luci.main.mediaurlbase='/luci-static/argon'
    uci set argon.@global[0].online_wallpaper='none'
-   uci delete argon.@global[0].bing_background
+   uci set argon.@global[0].transparency_dark='0.8'
    uci commit argon
    uci commit luci
 else
@@ -141,10 +143,10 @@ uci commit luci
 if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^luci-app-fancontrol")" -ne '0' ] && [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
    uci set fancontrol.settings.enabled='1'
    uci set fancontrol.settings.fan_file='/sys/devices/virtual/thermal/cooling_device1/cur_state'
-   uci set fancontrol.settings.start_speed='65'
-   uci set fancontrol.settings.start_temp='70'
+   uci set fancontrol.settings.start_speed='35'
+   uci set fancontrol.settings.start_temp='55'
+   uci set fancontrol.settings.max_temp='75'
    uci commit fancontrol
-   /etc/init.d/fancontrol restart
 
    # Add cron jobs for temperature schedule
    # каждый день в 20:00 (вечером тише)
@@ -155,7 +157,7 @@ fi
 uci commit
 
 # Configure turboacc if package and AXT1800 board are detected
-if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "turboacc")" -ne '0' ] && [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
+if [ "$( $PACKAGE_MANAGER 2>/dev/null | grep -c "^luci-app-turboacc")" -ne '0' ] && [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
    uci set turboacc.config.fullcone_nat6='0'
    uci set turboacc.config.bbr_cca='0'
    uci set turboacc.config.sw_flow='0'
@@ -166,6 +168,10 @@ fi
 if [ -e /sbin/cpuusage ];then
    sed -i 's/HWE:/NSS:/' /sbin/cpuusage
 fi
+
+# Configure cron
+mkdir /etc/crontabs
+touch /etc/crontabs/root
 
 # Add cron job for ramfree (drop caches) if package is installed
 if [ "$( $PACKAGE_MANAGER 2>/dev/null| grep -c "ramfree")" -ne '0' ] && [ "$(grep -c "/proc/sys/vm/drop_caches" /etc/crontabs/root)" -eq '0' ];then
