@@ -1,13 +1,25 @@
 # Авто-сборщик LiBwrt (форк ImmortalWrt с патчами для IPQ60XX и IPQ807X)
 
-## Usage
+## Информация по поддерживаемым устройствам
 
-- Поддержка GL-inet AXT-1800
+- Поддержка [GL-inet AXT-1800](https://www.gl-inet.com/products/gl-axt1800/)
 
   **Доступ по ssh и к панели**
 
   - IP: `192.168.8.1`
-  - ПОРТ: `22` (для ssh можно не указывать)
+  - Порт: `22` (для ssh можно не указывать)
+  - Пароль: нету, **как загрузитесь установите его сами**
+
+  > Внимание: Пароля на частоты 2.4 и 5 герц нету, чтобы к вам не подключились
+  > незнакомые люди рекомендуется либо:
+  >
+  > 1. Сразу поставить пароль в `Network` - `Wireless` - `Edit` (оба radio0 и
+  >    radio1) и в `Interface Configuration` - `Wireless Securuty` выбираем
+  >    в `Encryption` тип `WPA2-PSK` (или `WPA2-PSK/WPA3-SAE Mixed Mode`)
+  >    и в `Key` указываем ваш пароль
+  >
+  > 2. На время отключить данные частоты, а когда они вам понадобятся включаем
+  >    их
 
   **Прошивка**
 
@@ -26,6 +38,17 @@
 
     После прошиваем нажав `Continue`, подключаемся к панели только тогда когда
     индикатор на роутере будет гореть статично синим цветом
+
+## Если вас не устраивают мои настройки?
+
+Тогда [форкайте](https://github.com/anzix/LWrtBuilder/fork) и изменяйте под ваши
+нужды
+
+- defconfig (модули ядра, наличия каких-то оф. пакетов, feed'ы, и т.д): Для каждого
+  устройства собственный `.config`, как например для [axt1800.config](https://github.com/anzix/LWrtBuilder/tree/main/config)
+- Настройки при первом запуске: [zzz-default-settings](https://github.com/anzix/LWrtBuilder/blob/main/default-settings/files/zzz-default-settings)
+- Кастомные пакеты: [git-clone.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/git-clone.sh)
+- Специфичные настройки: [specific-setup.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/specific-setup.sh)
 
 ## Проблемы и способы их решения
 
@@ -56,12 +79,22 @@
    sed -i.bak "s,https://mirror.nju.edu.cn,https://downloads.immortalwrt.org,g" "/etc/apk/repositories.d/distfeeds.list"
    ```
 
+2. При обновлении индексов пакета возникает множество ошибок связанных с
+   `wgetSSL verify error: certificate is not yet valid`
+
+   Это происходит из-за того, что при первом включении системное время указано
+   неверно
+
+   Переходим в `System` - `General Settings` и в `Local Time` жмём `Sync with browser`,
+   после чего обновление индексов пакетов будет происходить нормально
+
 ## TODO
 
 - [x] ~~Исправить workflow связанный с медленной сборкой~~. В среднем прошивка
-  собирается за 1 час (иногда чуть дольше, +15-30 минут)
+  собирается за 1 час (иногда чуть дольше, +15-30 минут). Если повезёт то вообще
+  за 50 минут
 
-- [ ] Нужно как-то решить проблему с отсутствием cron
+- [x] ~Нужно как-то решить проблему с отсутствием cron~
 
   Чтобы решить проблему
 
@@ -69,9 +102,18 @@
   grep: /etc/crontabs/root: No such file or directory
   ```
 
-- [ ] Почему-то не добавились пакеты русификации `luci-i18n-*-ru`
+- [ ] Почему-то не добавляются пакеты русификации `luci-i18n-*-ru`
+- [ ] Проверить работу `specific-setup.sh`, и исправить создание собственного vermagic
 
-## Credits
+  Чтобы можно было собрать кастомное ядро linux не конфликтующее с официальными
+  kmod модулями
+
+## Благодарность
+
+- [qlxi/GL_AXT1800](https://github.com/qlxi/GL_AXT1800)
+- [wukongdaily/AutoBuildImmortalWrt](https://github.com/wukongdaily/AutoBuildImmortalWrt)
+
+И другие
 
 - [Microsoft Azure](https://azure.microsoft.com)
 - [GitHub Actions](https://github.com/features/actions)

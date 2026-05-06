@@ -17,9 +17,7 @@ echo "------------------------------------------"
 
 if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
    echo ">>> Device detected: $WORKFLOW_NAME. Starting to execute LibWrt-specific modifications"
-   # INFO: Главный выбор версии ядра на котором будет прошивка устройства, берётся
-   # с репозитория github LiBwrt (с указанной веткой) по пути target/linux/generic
-   #
+
    # The logic below always executes, as the workflow is configured for AXT-1800
    # Define path to kernel-6.12 file
    KERNEL_FILE="./target/linux/generic/kernel-6.12"
@@ -48,61 +46,44 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
    # git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
    # cat feeds/packages/lang/golang/golang/Makefile
 
-   # Download the corresponding kernel version of Vermagic
-   wget -qO- "https://downloads.immortalwrt.org/snapshots/targets/qualcommax/ipq60xx/kmods/" | grep -oP "$KERNEL_VERSION-1-\K[0-9a-f]+" | head -n 1 > vermagic && echo "Current Vermagic:" && cat vermagic
+   # Получаем совместимую версию ядра Vermagic из ImmortalWrt
+   REMOTE_IMM_KERNEL_VERSION=$(curl -s "https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/" \
+     | grep -oP "$KERNEL_VERSION" | head -n 1)
 
+   # Сравнение
+   if [ "$KERNEL_VERSION" = "$REMOTE_IMM_KERNEL_VERSION" ]; then
+     echo "Kernel version matches ✅, downloading IMM vermagic MD5 hash file ..."
+     wget -qO- "https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/" | \
+        grep -oP "$KERNEL_VERSION-1-\K[0-9a-f]+"  | head -n 1 > vermagic && \
+        echo "Download successful, current vermagic:" && cat vermagic
+     # Saving variables
+     VERMAGIC=$(cat vermagic)
+     echo "VERMAGIC_FIX=${VERMAGIC}" >> $GITHUB_ENV
+   else
+     echo "Kernel version mismatch ❌"
+     echo "Probably there is no such kernel "$KERNEL_VERSION" in the repository, or the url is broken"
+     exit 1
+   fi
+
+   # Patching the kernel
+   #
    # Download patches and move to cloned LiBwrt in corresponding path.
    wget https://raw.githubusercontent.com/m0eak/openwrt_patch/refs/heads/main/gl-axt1800/9999-gl-axt1800-dts-change-cooling-level.patch \
       -O ./target/linux/qualcommax/patches-6.12/9999-gl-axt1800-dts-change-cooling-level.patch \
       && echo "Download successful" || echo "Download error"
 
-   VERMAGIC=$(cat vermagic)
-   echo "VERMAGIC_FIX=${VERMAGIC}" >> $GITHUB_ENV
-
    # Modify vermagic
+   #
+   # Проверка если вдруг наш vermagic не создался
    if [ ! -s ./vermagic ]; then
-     echo "none vermagic"
+     echo "None vermagic"
    else
+     # Первое, убирает строку связанную с созданием OpenWrt'шного vermagic с MD5
+     # хешем, и второе, вставляет ниже рядом строку которая будет использовать
+     # наш собственный vermagic файла с MD5 хешем
+     echo "Modifying vermagic to our ..."
      sed -i '/grep '\''=\[ym\]'\'' $(LINUX_DIR)\/\.config\.set | LC_ALL=C sort | $(MKHASH) md5 > $(LINUX_DIR)\/\.vermagic/s/^/# /' ./include/kernel-defaults.mk
      sed -i '/$(LINUX_DIR)\/\.vermagic/a \\tcp $(TOPDIR)/vermagic $(LINUX_DIR)/.vermagic' ./include/kernel-defaults.mk
+     echo "Modification successful"
    fi
-
-   # --- Logic Block 2: Processing x86 immortalwrt ---
-# elif [[ "$WORKFLOW_NAME" == "x86_immortalwrt" ]]; then
-#     echo ">>> Detected: $WORKFLOW_NAME. Initiating specific modifications to x86 immortalwrt"
-#
-#     # The immortalwrt workflow defines TAG2, so VERSION2 is now valid!
-#     VERSION2=${TAG2#v}
-#     echo "immortalwrt 当前版本 (VERSION2): $VERSION2"
-#
-#     # Update the Golang version (currently deprecated; comments are retained for easy rollback)
-#     # rm -rf feeds/packages/lang/golang && echo "Removing old golang"
-#     # git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
-#     # cat feeds/packages/lang/golang/golang/Makefile
-#
-#     # Change the default IP
-#     sed -i 's/192.168.1.1/192.168.100.1/g' package/base-files/files/bin/config_generate
-#     echo "Change the x86 IP address to 192.168.100.1"
-#
-#     # Download the corresponding kernel version of Vermagic
-#     if [ -n "$VERSION2" ]; then
-#         sed -i "s/replace/$VERSION2/g" $GITHUB_WORKSPACE/files/etc/uci-defaults/zzz-default-settings && echo "VERSION replacement successful"
-#     else
-#         echo "Warning: VERSION2 is empty, unable to download vermagic."
-#     fi
-#
-#     # Download the corresponding kernel version of Vermagic
-#     if [ -n "$VERSION2" ]; then
-#         curl -s "https://downloads.immortalwrt.org/releases/$VERSION2/targets/x86/64/immortalwrt-$VERSION2-x86-64.manifest" | grep kernel | awk '{print $3}' | sed -E 's/.*~([0-9a-f]+)-r[0-9]+$/\1/; s/.*-([0-9a-f]+)$/\1/' > vermagic && echo "Immortalwrt Vermagic Done" && echo "Current Vermagic: " && cat vermagic
-#     else
-#         echo "Warning: VERSION2 is empty, unable to download vermagic."
-#     fi
-#
-#     # Modify Vermagic
-#     if [ -s ./vermagic ]; then
-#         sed -i '/grep '\''=\[ym\]'\'' $(LINUX_DIR)\/\.config\.set | LC_ALL=C sort | $(MKHASH) md5 > $(LINUX_DIR)\/\.vermagic/s/^/# /' ./include/kernel-defaults.mk
-#         sed -i '/$(LINUX_DIR)\/\.vermagic/a \\tcp $(TOPDIR)/vermagic $(LINUX_DIR)/.vermagic' ./include/kernel-defaults.mk
-#     else
-#         echo "none Vermagic, skip the modification."
-#     fi
 fi
