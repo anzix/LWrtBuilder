@@ -44,16 +44,26 @@ fi
 chmod +x /usr/share/extpart.sh
 ln -s /usr/share/extpart.sh /bin/extpart
 
-# Change the default IP
-# More options: https://openwrt.org/docs/guide-user/network/network_configuration
-#
-# For 24.10 and earlier, the 'netmask' will default to '255.255.255.0'
-# Example: 192.168.1.1
-#
-# But, make sure to use CIDR notation for 25.12 and later
-# Example: 192.168.1.1/24
+# Configure LAN
 if [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
+   # Change the default IP
+   # More options: https://openwrt.org/docs/guide-user/network/network_configuration
+   #
+   # For 24.10 and earlier, the 'netmask' will default to '255.255.255.0'
+   # Example: 192.168.1.1
+   #
+   # But, make sure to use CIDR notation for 25.12 and later
+   # Example: 192.168.1.1/24
    uci set network.lan.ipaddr="192.168.8.1/24"
+
+   # Change Wireless ssid name instead of LibWrt
+   uci set wireless.default_radio0.ssid='AXT1800-5G'
+   uci set wireless.default_radio1.ssid='AXT1800-2.4G'
+
+   # Change Contry Code
+   uci set wireless.radio0.country='RU'
+   uci set wireless.radio1.country='RU'
+
    uci commit network
 fi
 
