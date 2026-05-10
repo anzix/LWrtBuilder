@@ -1,6 +1,9 @@
 #!/bin/sh
 
+# Debug executed commands
 set -x
+# Log potential errors
+exec >/tmp/setup.log 2>&1
 
 # Beware! This script will be in /rom/etc/uci-defaults/ as part of the image.
 # Uncomment lines to apply:
@@ -11,9 +14,6 @@ set -x
 # Мои заметки
 # 1. На этом этапе делать `/etc/init.d/<service> restart` нет нужды, система
 #    ещё не инициализирована на данном этапе.
-
-# Log potential errors
-exec >/tmp/setup.log 2>&1
 
 sleep 10s
 

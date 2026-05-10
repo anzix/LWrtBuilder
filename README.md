@@ -108,6 +108,15 @@
   Чтобы можно было собрать кастомное ядро linux не конфликтующее с официальными
   kmod модулями
 
+- [ ] Должен быть установлен я так понимаю kmod feed репозиторий в `/etc/apk/repositories.d/distfeeds.list`,
+  но в моём случае он не добавился.
+
+  ```txt
+  https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/6.12.84-1-6f890802eaff7c9b13ea5a148e6d0e9d/packages.adb
+  ```
+
+  Нужно чтобы как-то автоматически указывался этот feed
+
 ## Благодарность
 
 - [qlxi/GL_AXT1800](https://github.com/qlxi/GL_AXT1800)
