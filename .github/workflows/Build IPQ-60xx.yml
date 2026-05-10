@@ -123,6 +123,14 @@ jobs:
         # Save current path
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
 
+    - name: Performing a specific setup (1st script)
+      run: |
+        cd openwrt
+        chmod +x $GITHUB_WORKSPACE/$SPECIFIC_SETUP_SH
+
+        # Executes specific-setup.sh
+        $GITHUB_WORKSPACE/$SPECIFIC_SETUP_SH
+
     - name: Update feeds
       run: |
         cd openwrt
@@ -133,14 +141,6 @@ jobs:
 
         # Update feeds
         ./scripts/feeds update -a
-
-    - name: Performing a specific setup (1st script)
-      run: |
-        cd openwrt
-        chmod +x $GITHUB_WORKSPACE/$SPECIFIC_SETUP_SH
-
-        # Executes specific-setup.sh
-        $GITHUB_WORKSPACE/$SPECIFIC_SETUP_SH
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
