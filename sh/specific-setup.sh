@@ -54,7 +54,7 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
 
    # Сравнение и получение хеш Kmod
    if [ "$KERNEL_VERSION" = "$REMOTE_KERNEL_VERSION" ]; then
-     echo "Kernel version matches ✅, downloading IMM vermagic MD5 hash file ..."
+     echo "✅ Kernel version matches, downloading IMM vermagic MD5 hash file ..."
      wget -qO- $BASE_URL | grep -oP "$KERNEL_VERSION-1-\K[0-9a-f]+" | \
         head -n 1 > vermagic && echo "Download successful, current vermagic:" && cat vermagic
 
@@ -65,7 +65,8 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
      if [ -n "$KMOD_DIR" ]; then
         FULL_KMOD_URL="${BASE_URL}${KMOD_DIR}"
         echo "✅ Путь к kmods успешно найден: $FULL_KMOD_URL"
-        echo "$FULL_KMOD_URL/packages.adb" >> $GITHUB_WORKSPACE/$FEEDS_CONF
+        echo "$FULL_KMOD_URL/packages.adb" >> ./feeds.conf.default
+        cat ./feeds.conf.default
      else
        echo "❌ Не удалось получить хеш Kmod. Пожалуйста, проверьте, существует ли эта версия в официальном репозитории: $BASE_URL"
        exit 1

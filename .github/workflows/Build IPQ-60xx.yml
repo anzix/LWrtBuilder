@@ -137,7 +137,7 @@ jobs:
 
         # If there is a feeds.conf.default (containing custom feeds) file in the
         # root of directory, then copy it
-        [ -e $GITHUB_WORKSPACE/$FEEDS_CONF ] && cp $GITHUB_WORKSPACE/$FEEDS_CONF ./feeds.conf.default
+        # [ -e $GITHUB_WORKSPACE/$FEEDS_CONF ] && cp $GITHUB_WORKSPACE/$FEEDS_CONF ./feeds.conf.default
 
         # Update feeds
         ./scripts/feeds update -a
