@@ -10,16 +10,16 @@
   - Порт: `22` (для ssh можно не указывать)
   - Пароль: нету, **как загрузитесь установите его сами**
 
-  > Внимание: Пароля на частоты 2.4 и 5 герц нету, чтобы к вам не подключились
-  > незнакомые люди рекомендуется либо:
-  >
-  > 1. Сразу поставить пароль в `Network` - `Wireless` - `Edit` (оба radio0 и
-  >    radio1) и в `Interface Configuration` - `Wireless Securuty` выбираем
-  >    в `Encryption` тип `WPA2-PSK` (или `WPA2-PSK/WPA3-SAE Mixed Mode`)
-  >    и в `Key` указываем ваш пароль
-  >
-  > 2. На время отключить данные частоты, а когда они вам понадобятся включаем
-  >    их
+    > Внимание: Пароля на частоты 2.4 и 5 герц нету, чтобы к вам не подключились
+    > незнакомые люди рекомендуется либо:
+    >
+    > 1. Сразу поставить пароль в `Network` - `Wireless` - `Edit` (оба radio0 и
+    >    radio1) и в `Interface Configuration` - `Wireless Securuty` выбираем
+    >    в `Encryption` тип `WPA2-PSK` (или `WPA2-PSK/WPA3-SAE Mixed Mode`)
+    >    и в `Key` указываем ваш пароль
+    >
+    > 2. На время отключить данные частоты, а когда они вам понадобятся включаем
+    >    их
 
   **Прошивка**
 
@@ -48,7 +48,7 @@
   устройства собственный `.config`, как например для [axt1800.config](https://github.com/anzix/LWrtBuilder/tree/main/config)
 - Настройки при первом запуске: [zzz-default-settings](https://github.com/anzix/LWrtBuilder/blob/main/default-settings/files/zzz-default-settings)
 - Кастомные пакеты: [git-clone.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/git-clone.sh)
-- Специфичные настройки: [specific-setup.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/specific-setup.sh)
+- Специфичные настройки (фиксирование хеша vermagic, применение собственных патчей и т.д): [specific-setup.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/specific-setup.sh)
 
 ## Проблемы и способы их решения
 

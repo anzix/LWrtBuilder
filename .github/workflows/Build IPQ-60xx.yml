@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 env:
-  REPO_URL_IMM: https://github.com/LiBwrt/openwrt-6.x
-  REPO_BRANCH: 25.12-nss
+  REPO_URL_IMM: https://github.com/m0eak/libwrt
+  REPO_BRANCH: 25.12.2
   FEEDS_CONF: feeds.conf.default
   SPECIFIC_SETUP_SH: ./sh/specific-setup.sh
   GIT_CLONE_SH: ./sh/git-clone.sh

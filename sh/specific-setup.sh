@@ -44,17 +44,15 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
    # Update the Golang version (currently deprecated; comments are retained for easy rollback)
    # rm -rf feeds/packages/lang/golang && echo "Removing old golang"
    # git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
-   # cat feeds/packages/lang/golang/golang/Makefile
 
    # Динамически получить хеш Kmod и обновить конфигурацию.
-   #
+   # Получаем последнюю версию ядра из ImmortalWrt
    BASE_URL="https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/"
-   # Получаем совместимую версию ядра Vermagic из ImmortalWrt
    REMOTE_KERNEL_VERSION=$(curl -s $BASE_URL | grep -oP "$KERNEL_VERSION" | head -n 1)
 
    # Сравнение и получение хеш Kmod
    if [ "$KERNEL_VERSION" = "$REMOTE_KERNEL_VERSION" ]; then
-     echo "✅ Kernel version matches, downloading IMM vermagic MD5 hash file ..."
+     echo "✅ Kernel version matches, getting kmod hash and writing vermagic file ..."
      wget -qO- $BASE_URL | grep -oP "$KERNEL_VERSION-1-\K[0-9a-f]+" | \
         head -n 1 > vermagic && echo "Download successful, current vermagic:" && cat vermagic
 
@@ -64,11 +62,11 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
      # Добавление репозитория kmod с фиксированным vermagic
      if [ -n "$KMOD_DIR" ]; then
         FULL_KMOD_URL="${BASE_URL}${KMOD_DIR}"
-        echo "✅ Путь к kmods успешно найден: $FULL_KMOD_URL"
+        echo "✅ The path to kmods was successfully found: $FULL_KMOD_URL"
         echo "$FULL_KMOD_URL/packages.adb" >> ./feeds.conf.default
         cat ./feeds.conf.default
      else
-       echo "❌ Не удалось получить хеш Kmod. Пожалуйста, проверьте, существует ли эта версия в официальном репозитории: $BASE_URL"
+       echo "❌ Couldn't get the Kmod hash. Please check if this version exists in the official ImmortalWrt repository: $BASE_URL"
        exit 1
      fi
 
@@ -77,7 +75,9 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
      echo "VERMAGIC_FIX=${VERMAGIC}" >> $GITHUB_ENV
    else
      echo "Kernel version mismatch ❌"
-     echo "Probably there is no such kernel "$KERNEL_VERSION" in the repository, or the url is broken"
+     echo "Latest ImmortalWrt kernel version release: $REMOTE_KERNEL_VERSION"
+     echo "Kernel version in the cloned repository LiBwrt: $KERNEL_VERSION"
+     echo "Probably there is no such kernel "$KERNEL_VERSION" in the ImmortalWrt repository, or the url is broken"
      exit 1
    fi
 
