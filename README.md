@@ -39,6 +39,47 @@
     После прошиваем нажав `Continue`, подключаемся к панели только тогда когда
     индикатор на роутере будет гореть статично синим цветом
 
+## Полезная информация
+
+### Официальный репозиторий kmod и добавление feed'а
+
+Вы можете использовать репозиторий kmod из ImmortalWrt если в процессе сборки
+прошивки был зафиксирован хеш vermagic из ImmortalWrt (смотрите лог в Github
+Actions на этапе `Performing a specific setup (1st script)`)
+
+```txt
+...
+✅ Kernel version matches, getting kmod hash and writing vermagic file ...
+Download successful, current vermagic:
+0ca8e90c8f66217c019a184e53b67af4
+```
+
+Как загрузитесь в устройство проверьте вашу версию ядра используя команду и
+скопируйте хеш
+
+```sh
+apk info kernel | grep -oE '[0-9a-f]{32}' | uniq
+
+# У меня указан 0ca8e90c8f66217c019a184e53b67af4
+```
+
+Далее [смотрим репозиторий kmod вашего устройства](https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/)
+и сверяем с вашей текущей версией. Если всё совпадает значит можно использовать
+данный kmod репозиторий
+
+После чего указываем в `/etc/apk/repositories.d/distfeeds.list` строку с
+указанием kmod репозиторий в соответствии с вашей версией ядра и хешем vermagic.
+Вот пример
+
+```txt
+https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/6.12.84-1-6f890802eaff7c9b13ea5a148e6d0e9d/packages.adb
+```
+
+После, сохраняем и обновляем индексы командой `apk update`. И проверяем на
+установку какого-либо kmod модуля ядра, укав в поиске `kmod`
+
+Если при установке нет никаких ошибок значит вы всё правильно настроили.
+
 ## Если вас не устраивают мои настройки?
 
 Тогда [форкайте](https://github.com/anzix/LWrtBuilder/fork) и изменяйте под ваши
@@ -91,7 +132,7 @@
 ## TODO
 
 - [x] ~~Исправить workflow связанный с медленной сборкой~~. В среднем прошивка
-  собирается за 1 час (иногда чуть дольше, +15-30 минут). Если повезёт то вообще
+  собирается за 1 час (иногда чуть дольше, +15-40 минут). Если повезёт то вообще
   за 50 минут
 
 - [x] ~Нужно как-то решить проблему с отсутствием cron~
@@ -108,14 +149,7 @@
   Чтобы можно было собрать кастомное ядро linux не конфликтующее с официальными
   kmod модулями
 
-- [ ] Должен быть установлен я так понимаю kmod feed репозиторий в `/etc/apk/repositories.d/distfeeds.list`,
-  но в моём случае он не добавился.
 
-  ```txt
-  https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/6.12.84-1-6f890802eaff7c9b13ea5a148e6d0e9d/packages.adb
-  ```
-
-  Нужно чтобы как-то автоматически указывался этот feed
 
 ## Благодарность
 

@@ -65,28 +65,6 @@ if [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
    uci set wireless.radio1.country='RU'
 
    uci commit network
-
-   # Добавление репозитория kmod если прошивка собрана с фиксированным vermagic
-   #
-   BASE_URL="https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/"
-
-   # Получение имен папок, содержащих хеш-значения (например, 6.6.110-1-xxx...)
-   KMOD_DIR=$(curl -sL $BASE_URL | grep -oE "[0-9.-]+-[a-f0-9]{32}" | tail -n1)
-
-   # Вторая переменная берёт из $CURRENT_KERNEL_HASH и при обнаружении выдаёт результат
-   CURRENT_KERNEL_HASH="$(apk info kernel | grep -oE '[0-9a-f]{32}' | uniq)"
-   REMOTE_KERNEL_HASH=$(curl -sL $BASE_URL | grep -oE $CURRENT_KERNEL_HASH | uniq)
-
-   # Сравнение и при успехе добавляет официальный kmod репозиторий
-   if [ "$CURRENT_KERNEL_HASH" = "$REMOTE_KERNEL_HASH" ]; then
-      FULL_KMOD_URL="${BASE_URL}${KMOD_DIR}"
-      echo "✅ The path to kmods was successfully found: $FULL_KMOD_URL"
-      echo "$FULL_KMOD_URL" >> /etc/apk/repositories.d/distfeeds.list
-   else
-     echo "❌ Couldn't get the Kmod hash. Please check if this version exists in the official ImmortalWrt repository: $BASE_URL"
-     exit 1
-   fi
-
 fi
 
 # Basic system settings (time zone, hostname, ntp and etc)
