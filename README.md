@@ -58,7 +58,7 @@ Download successful, current vermagic:
 скопируйте хеш
 
 ```sh
-apk info kernel | grep -oE '[0-9a-f]{32}' | uniq
+apk info kernel
 
 # У меня указан 0ca8e90c8f66217c019a184e53b67af4
 ```
