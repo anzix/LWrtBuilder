@@ -10,11 +10,8 @@
 # Description: OpenWrt DIY script part 2 (After Update feeds)
 #
 
-# Fix rust build error
-[ -e feeds/packages/lang/rust/Makefile ] && sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' feeds/packages/lang/rust/Makefile
-
 # Define target directory
-TARGET_DIR="$PWD/package"
+TARGET_DIR="$PWD/package/custom"
 
 # Define repositories and branches to clone
 # INFO: At the end, after =, it's a branch.
@@ -48,47 +45,104 @@ declare -A REPOS=(
     ["https://github.com/Slava-Shchipunov/awg-openwrt"]=""
 )
 
+CONFLICTING_MAKEFILE_KEYWORDS=()
+
+# Fix rust build error
+patch_rust_makefile() {
+    if [ -e "feeds/packages/lang/rust/Makefile" ]; then
+        sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' feeds/packages/lang/rust/Makefile
+    fi
+}
+
+reset_custom_package_dir() {
+    if [ -z "$TARGET_DIR" ] || [ "$TARGET_DIR" = "/" ]; then
+        echo "Error: TARGET_DIR is abnormal and refuses to delete: '$TARGET_DIR'"
+        exit 1
+    fi
+
+    rm -rf "$TARGET_DIR"
+    mkdir -p "$TARGET_DIR"
+}
+
+remove_conflicting_makefiles() {
+    local keyword
+    local file
+    local file_lower
+
+    echo "Start cleaning up makefiles in feeds that will be overwritten by package/custom"
+    find . -type f -name "Makefile" ! -path "$TARGET_DIR/*" -print0 |
+    while IFS= read -r -d $'\0' file; do
+        file_lower="${file,,}"
+        for keyword in "${CONFLICTING_MAKEFILE_KEYWORDS[@]}"; do
+            if [[ "$file_lower" == *"$keyword"* ]]; then
+                echo "Delete conflict Makefile: $file"
+                rm -f "$file"
+                break
+            fi
+        done
+    done
+    echo "Conflict Makefile cleanup is complete"
+}
+
 # Clone repositories
 clone_repo() {
     local repo_url=$1
     local repo_branch=${REPOS[$repo_url]}
-    local repo_name=$(basename -s .git "$repo_url")
-    local repo_dir="$TARGET_DIR/$repo_name"
+    local repo_name
+    local repo_dir
 
-    echo "Cloning repository: $repo_name, URL: $repo_url, Branch: $repo_branch"
+    repo_name="$(basename -s .git "$repo_url")"
+    repo_dir="$TARGET_DIR/$repo_name"
 
     if [ -d "$repo_dir" ]; then
-        echo "Directory $repo_dir already exists, skipping"
-        return
+        echo "The directory $repo_dir already exists, skip cloning"
+        return 0
     fi
 
+    echo "Cloning repository: $repo_name, URL: $repo_url, Branch: ${repo_branch:-default_branch}"
     if [ -z "$repo_branch" ]; then
-        echo "Executing git clone (default branch): git clone --single-branch --depth 1 \"$repo_url\" \"$repo_dir\""
         git clone --single-branch --depth 1 "$repo_url" "$repo_dir"
     else
-        echo "Executing git clone (specific branch): git clone --single-branch --depth 1 -b \"$repo_branch\" \"$repo_url\" \"$repo_dir\""
         git clone --single-branch --depth 1 -b "$repo_branch" "$repo_url" "$repo_dir"
-    fi
-
-    if [ $? -eq 0 ]; then
-        echo "Repository $repo_name cloned successfully"
-    else
-        echo "Error cloning repository $repo_name"
     fi
 }
 
 # Iterate over REPOS array and clone
-echo "Starting repository cloning"
-for repo in "${!REPOS[@]}"; do
-    clone_repo "$repo"
-done
+clone_custom_repos() {
+    local repo
+    local failed=0
 
-echo "Cloning of all repositories finished"
+    echo "Starting to clone custom repositories"
+    for repo in "${!REPOS[@]}"; do
+        if clone_repo "$repo"; then
+            echo "Repository cloned successfully: $(basename -s .git "$repo")"
+        else
+            echo "Failed to clone repository: $repo"
+            failed=$((failed + 1))
+        fi
+    done
 
-cd $TARGET_DIR/turboacc/luci-app*
-if [ "$(ls -la | grep -c "Makefile")" -eq '0' ]; then
-    echo "Makefile not found, stopping GitHub Action"
-    exit 1
-else
-    echo "Makefile found, continuing"
-fi
+    if [ "$failed" -ne 0 ]; then
+        echo "Error: $failed custom repositories failed to clone"
+        exit 1
+    fi
+    echo "All custom repositories cloned successfully"
+}
+
+verify_turboacc_makefile() {
+    local turboacc_luci_dir
+
+    turboacc_luci_dir="$(find "$TARGET_DIR/turboacc" -maxdepth 1 -type d -name 'luci-app*' | head -n 1)"
+    if [ -z "$turboacc_luci_dir" ] || [ ! -f "$turboacc_luci_dir/Makefile" ]; then
+        echo "TurboACC luci-app Makefile not found, terminating GitHub Action"
+        exit 1
+    fi
+
+    echo "TurboACC Makefile found, continuing"
+}
+
+patch_rust_makefile
+reset_custom_package_dir
+remove_conflicting_makefiles
+clone_custom_repos
+verify_turboacc_makefile

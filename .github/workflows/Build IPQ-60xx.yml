@@ -8,7 +8,7 @@ on:
 
 env:
   REPO_URL_IMM: https://github.com/m0eak/libwrt
-  REPO_BRANCH: 25.12-nss
+  REPO_BRANCH: 25.12.5
   FEEDS_CONF: feeds.conf.default
   SPECIFIC_SETUP_SH: ./sh/specific-setup.sh
   GIT_CLONE_SH: ./sh/git-clone.sh
@@ -114,7 +114,7 @@ jobs:
         cd openwrt
         git fetch --tags
 
-        # Removing Chinese Mirrors in cloned LiBwrt
+        # Removing Chinese Mirrors in cloned ImmortalWrt
         PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
         if [ -f "$PROJECT_MIRRORS_FILE" ]; then
           sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"

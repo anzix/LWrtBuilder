@@ -4,6 +4,9 @@
 
 - Поддержка [GL-inet AXT-1800](https://www.gl-inet.com/products/gl-axt1800/)
 
+  > Проверено на глобальной версии, **на китайской версии делайте на свой страх
+  > и риск**
+
   **Доступ по ssh и к панели**
 
   - IP: `192.168.8.1`
@@ -60,15 +63,15 @@ Download successful, current vermagic:
 ```sh
 apk info kernel
 
-# У меня указан 0ca8e90c8f66217c019a184e53b67af4
+# У меня указан 0ca8e90c8f66217c019a184e53b67af4 что соответствует действительности
 ```
 
 Далее [смотрим репозиторий kmod вашего устройства](https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/)
 и сверяем с вашей текущей версией. Если всё совпадает значит можно использовать
 данный kmod репозиторий
 
-После чего указываем в `/etc/apk/repositories.d/distfeeds.list` строку с
-указанием kmod репозиторий в соответствии с вашей версией ядра и хешем vermagic.
+После чего указываем в `/etc/apk/repositories.d/distfeeds.list` в конце строку
+с указанием kmod репозитория в соответствии с вашей версией ядра и хешем vermagic.
 Вот пример
 
 ```txt
@@ -91,12 +94,28 @@ https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq
 - Кастомные пакеты: [git-clone.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/git-clone.sh)
 - Специфичные настройки (фиксирование хеша vermagic, применение собственных патчей и т.д): [specific-setup.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/specific-setup.sh)
 
+До начала сборки прошивки необходимо в вашем форк репозитории **зайти в
+Settings - Actions, General** и в **`Workflow permissions`** поменять с **`Read
+repository contents and packages permissions`** на **`Read and write permissions`**
+и нажать **`Save`**
+
+Это исправляет ошибку на этапе **`Generate unified publishing tags and content.`**
+
+```txt
+⚠️ GitHub release failed with status: 403
+{"message":"Resource not accessible by integration","documentation_url":"https://docs.github.com/rest/releases/releases#create-a-release","status":"403"}
+Skip retry — your GitHub token/PAT does not have the required permission to create a release
+⚠️ Unexpected error fetching GitHub release for tag refs/heads/main: HttpError: Resource not accessible by integration - https://docs.github.com/rest/releases/releases#create-a-release
+Error: Resource not accessible by integration - https://docs.github.com/rest/releases/releases#create-a-release
+```
+
 ## Проблемы и способы их решения
 
 1. Текущие зеркала выдают ошибку `Bad gateway 502`
 
-   Решение: Временно перейти на другое зеркало, например сами авторы в [тг канале](https://t.me/ctcgfw_project_openwrt/55)
-   советуют использовать из [help.mirrorz.org](https://help.mirrorz.org/immortalwrt/)
+   Решение: Временно перейти на другое зеркало, например сами авторы ImmortalWrt
+   в [тг канале](https://t.me/ctcgfw_project_openwrt/55) советуют использовать
+   из [help.mirrorz.org](https://help.mirrorz.org/immortalwrt/)
 
    Команда по смене зеркала
 
