@@ -33,7 +33,7 @@ declare -A REPOS=(
     # Данный репозиторий отсюда более новый и с исправлениями, в отличие от
     # официального репозитория ImmortalWrt
     # Used by: CONFIG_PACKAGE_luci-app-tailscale-community=y
-    ["https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git"]=""
+    # ["https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git"]=""
 
     # Used by: CONFIG_PACKAGE_luci-app-nikki=y
     ["https://github.com/nikkinikki-org/OpenWrt-nikki"]=""

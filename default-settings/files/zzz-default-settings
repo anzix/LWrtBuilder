@@ -185,7 +185,7 @@ if [ -e /sbin/cpuusage ];then
 fi
 
 # Configure cron
-mkdir /etc/crontabs
+mkdir -p /etc/crontabs
 touch /etc/crontabs/root
 
 # Add cron job for ramfree (drop caches) if package is installed
