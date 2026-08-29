@@ -1,0 +1,288 @@
+name: OpenWrt build device
+
+on:
+  workflow_call:
+    inputs:
+      device:
+        description: Device name used for artifact names.
+        required: true
+        type: string
+      config_file:
+        description: Repository config file to move into openwrt/.config.
+        required: true
+        type: string
+      extra_config_file:
+        description: Optional repository config fragment appended after the base config.
+        default: ""
+        type: string
+      workflow_name:
+        description: Logical workflow/device name consumed by custom shell scripts.
+        required: true
+        type: string
+      repo_url:
+        description: OpenWrt source repository URL.
+        required: true
+        type: string
+      repo_branch:
+        description: OpenWrt source branch or tag.
+        required: true
+        type: string
+      feeds_conf:
+        description: Custom feeds.conf.default path in the repository.
+        default: feeds.conf.default
+        type: string
+      diy_p1_sh:
+        description: Performing a specific setup (1st script)
+        default: ./sh/specific-setup.sh
+        type: string
+      diy_p2_sh:
+        description: Performing git cloning external packages (2nd script)
+        default: ./sh/git-clone.sh
+        type: string
+      default_setting:
+        description: Custom default settings package path.
+        default: ./default-settings
+        type: string
+      cache_toolchain:
+        description: Whether to enable toolchain cache.
+        default: "true"
+        type: string
+      timezone:
+        description: Runner timezone.
+        default: Europe/Berlin
+        type: string
+
+jobs:
+  build:
+    name: Compile ${{ inputs.device }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@main
+
+      - name: Show runner environment
+        shell: bash
+        run: |
+          echo "::group::Build workflow inputs"
+          echo "device=${{ inputs.device }}"
+          echo "workflow_name=${{ inputs.workflow_name }}"
+          echo "repo_url=${{ inputs.repo_url }}"
+          echo "repo_branch=${{ inputs.repo_branch }}"
+          echo "config_file=${{ inputs.config_file }}"
+          echo "extra_config_file=${{ inputs.extra_config_file }}"
+          echo "feeds_conf=${{ inputs.feeds_conf }}"
+          echo "diy_p1_sh=${{ inputs.diy_p1_sh }}"
+          echo "diy_p2_sh=${{ inputs.diy_p2_sh }}"
+          echo "default_setting=${{ inputs.default_setting }}"
+          echo "cache_toolchain=${{ inputs.cache_toolchain }}"
+          for path in \
+            "${{ inputs.config_file }}" \
+            "${{ inputs.extra_config_file }}" \
+            "${{ inputs.feeds_conf }}" \
+            "${{ inputs.diy_p1_sh }}" \
+            "${{ inputs.diy_p2_sh }}" \
+            "${{ inputs.default_setting }}" \
+            "files"; do
+            [ -z "$path" ] && continue
+            if [ -e "$path" ]; then
+              echo "exists: $path"
+            else
+              echo "missing: $path"
+            fi
+          done
+          echo "::endgroup::"
+
+          echo "::group::Runner environment"
+          echo "================================================="
+          echo "GitHub Actions runner environment"
+          echo "================================================="
+          lscpu
+          echo "CPU threads: $(nproc)"
+          free -h
+          df -hT
+          uname -a
+          lsb_release -a || true
+          echo "::endgroup::"
+
+      - name: Free disk space
+        uses: coder-xiaomo/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Initialize build environment
+        shell: bash
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          TZ: ${{ inputs.timezone }}
+        run: |
+          sudo rm -rf /etc/apt/sources.list.d/*
+
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake \
+            autopoint binutils bison build-essential bzip2 ccache cmake cpio curl \
+            device-tree-compiler fastjar flex gawk gettext gcc-multilib \
+            g++-multilib git gperf haveged help2man intltool libc6-dev-i386 \
+            libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+            libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
+            libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build \
+            p7zip p7zip-full patch pkgconf python3 python3-pyelftools \
+            python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
+            swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+
+          sudo -E apt-get -y autoremove --purge
+          sudo -E apt-get -y clean
+          sudo timedatectl set-timezone "$TZ"
+
+          sudo mkdir -p /workdir
+          sudo chown "$USER:$(id -gn)" /workdir
+
+          # Saving variables for further work
+          echo "WORKFLOW_NAME=${{ inputs.workflow_name }}" >> "$GITHUB_ENV"
+          echo "TAG=${{ inputs.repo_branch }}" >> "$GITHUB_ENV"
+
+      - name: Clone firmware source
+        id: clone-source
+        shell: bash
+        working-directory: /workdir
+        run: |
+          # Check space
+          df -hT $PWD
+
+          # Clone with specified branch TAG and rename it to `openwrt`
+          git clone -b "${TAG}" $REPO_URL_IMM --single-branch --depth 1 openwrt
+          ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          cd openwrt
+          git fetch --tags || true
+
+          # Removing Chinese Mirrors in cloned ImmortalWrt
+          PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
+          if [ -f "$PROJECT_MIRRORS_FILE" ]; then
+            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
+          fi
+
+          echo "::group::OpenWrt source revision"
+          git log -1 --oneline
+          git remote -v
+          git status --short
+          echo "::endgroup::"
+
+          # Save current path
+          echo "OPENWRT_PATH=$PWD" >> "$GITHUB_ENV"
+          echo "openwrt-path=$PWD" >> "$GITHUB_OUTPUT"
+
+      - name: Update feeds
+        run: |
+          cd openwrt
+
+          # If there is a feeds.conf.default (containing custom feeds) file in the
+          # root of directory, then copy it
+          [ -e "$GITHUB_WORKSPACE/${{ inputs.feeds_conf }}" ] && cp "$GITHUB_WORKSPACE/${{ inputs.feeds_conf }}" ./feeds.conf.default
+
+          echo "::group::Feeds configuration"
+          pwd
+          ls -l feeds.conf.default || true
+          sed -n '1,80p' feeds.conf.default || true
+          echo "::endgroup::"
+
+          # Update feeds
+          ./scripts/feeds update -a
+
+      - name: Performing a specific setup (1st script)
+        run: |
+          cd openwrt
+          chmod +x "$GITHUB_WORKSPACE/${{ inputs.diy_p1_sh }}"
+
+          # Executes specific-setup.sh
+          "$GITHUB_WORKSPACE/${{ inputs.diy_p1_sh }}"
+
+      - name: Install feeds
+        shell: bash
+        run: cd openwrt && ./scripts/feeds install -a
+
+      - name: Cache toolchain
+        uses: HiGarfield/cachewrtbuild@main
+        if: ${{ inputs.cache_toolchain != 'false' }}
+        with:
+          ccache: true
+          mixkey: ${{ github.workflow }}-${{ inputs.workflow_name }}-${{ hashFiles(inputs.config_file, 'specific-setup.sh', 'git-clone.sh')) }}
+          prefix: ${{ steps.clone-source.outputs.openwrt-path }}
+
+      - name: Download packages
+        shell: bash
+        run: |
+          cd openwrt
+          make download -j"$(nproc)" || make download -j1 V=s
+          echo "::group::Download directory summary"
+          du -sh dl || true
+          find dl -size -1024c -exec ls -l {} \; || true
+          echo "::endgroup::"
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile firmware
+        shell: bash
+        run: |
+          cd openwrt
+          echo "Compiling with $(nproc) threads..."
+          make -j"$(expr "$(nproc)" + 1)" || make -j1 V=s
+
+      - name: Remove temporary build files
+        if: success()
+        shell: bash
+        run: |
+          cd openwrt
+          rm -rf build_dir tmp
+
+      - name: Organize firmware files
+        id: organize
+        shell: bash
+        run: |
+          cd openwrt/bin/targets/*/*
+          rm -rf packages
+          echo "::group::Firmware files"
+          pwd
+          find . -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+          echo "::endgroup::"
+          echo "FIRMWARE_PATH=$PWD" >> "$GITHUB_ENV"
+          echo "firmware-path=$PWD" >> "$GITHUB_OUTPUT"
+
+      - name: Extract LuCI package list from final build config
+        shell: bash
+        run: |
+          CONFIG_BUILDINFO="${{ steps.organize.outputs.firmware-path }}/config.buildinfo"
+          echo "::group::LuCI package extraction from final config"
+          echo "Extracting LuCI packages from $CONFIG_BUILDINFO"
+          if [ ! -s "$CONFIG_BUILDINFO" ]; then
+            echo "ERROR: final config.buildinfo not found or empty: $CONFIG_BUILDINFO" >&2
+            exit 1
+          fi
+          wc -l "$CONFIG_BUILDINFO"
+          sha256sum "$CONFIG_BUILDINFO"
+
+          grep -E '^CONFIG_PACKAGE_luci-app-[^=]+=[ym]$' "$CONFIG_BUILDINFO" | \
+            sed -e 's/^CONFIG_PACKAGE_//g' -e 's/=[ym]$//g' | \
+            sort > "$GITHUB_WORKSPACE/packages.txt" || true
+
+          if [ -s "$GITHUB_WORKSPACE/packages.txt" ]; then
+            cat "$GITHUB_WORKSPACE/packages.txt"
+          else
+            echo "No LuCI package information found in final build config." > "$GITHUB_WORKSPACE/packages.txt"
+          fi
+          echo "::endgroup::"
+
+      - name: Upload package list artifact
+        uses: actions/upload-artifact@main
+        with:
+          name: package-list-${{ inputs.device }}
+          path: ${{ github.workspace }}/packages.txt
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@main
+        with:
+          name: firmware-${{ inputs.device }}
+          path: ${{ steps.organize.outputs.firmware-path }}

@@ -2,27 +2,22 @@ name: Build IPQ-60xx
 
 on:
   # schedule: # Каждый раз выполнять этот workflow github по расписанию
-  #  - cron: '0 16 * * *'
+  #  - cron: '0 16 */5 * *'
   repository_dispatch:
   workflow_dispatch:
-
-env:
-  REPO_URL_IMM: https://github.com/LiBwrt/LibWrt
-  REPO_BRANCH: v25.12.1
-  FEEDS_CONF: feeds.conf.default
-  SPECIFIC_SETUP_SH: ./sh/specific-setup.sh
-  GIT_CLONE_SH: ./sh/git-clone.sh
-  DEFAULT_SETTING: ./default-settings
-  UPLOAD_BIN_DIR: true
-  UPLOAD_FIRMWARE: true
-  UPLOAD_RELEASE: true
-  CACHE_TOOLCHAIN: true
-  TZ: Europe/Berlin
+    inputs:
+      docker:
+        description: 'Should Docker be compiled?'
+        required: false
+        default: 'false'
+      tag:
+        description: 'libwrt version'
+        required: false
+        default: 'v25.12.1'
 
 jobs:
   build:
     name: Compile ${{ matrix.device }}
-    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -30,304 +25,28 @@ jobs:
           - device: AXT-1800
             config_file: './config/axt1800.config'
             workflow_name: 'AXT-1800'
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@main
-
-    - name: Check Server Performance
-      run: |
-        echo "================================================="
-        echo "           GitHub Actions operating environment details"
-        echo "================================================="
-        echo "CPU information:"
-        lscpu
-        echo "CPU thread count: $(nproc)"
-        echo "-------------------------------------------------"
-        echo "Memory information:"
-        free -h
-        echo "Swap partition size: $(grep SwapTotal /proc/meminfo | awk '{print $2/1024/1024 " GB"}')"
-        echo "-------------------------------------------------"
-        echo "Disk space information:"
-        df -hT
-        echo "-------------------------------------------------"
-        echo "Operating system information:"
-        uname -a
-        lsb_release -a
-        echo "================================================="
-
-    - name: Free disk space
-      uses: coder-xiaomo/free-disk-space@main
-      with:
-        tool-cache: false
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
-
-    - name: Initialize environment
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        # Installing dependencies for compilation
-
-        sudo rm -rf /etc/apt/sources.list.d/*
-
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake \
-          autopoint binutils bison build-essential bzip2 ccache cmake cpio curl \
-          device-tree-compiler fastjar flex gawk gettext gcc-multilib \
-          g++-multilib git gperf haveged help2man intltool libc6-dev-i386 \
-          libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev \
-          libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
-          libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build \
-          p7zip p7zip-full patch pkgconf python3 python3-pyelftools \
-          python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
-          swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
-
-        sudo -E apt-get -y autoremove --purge
-        sudo -E apt-get -y clean
-        sudo timedatectl set-timezone "$TZ"
-
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
-
-        # Saving variables for further work
-        echo "WORKFLOW_NAME=${{ matrix.workflow_name }}" >> $GITHUB_ENV
-        if [ -n "${{ github.event.inputs.tag }}" ]; then
-          echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
-        else
-          echo "TAG=$REPO_BRANCH" >> $GITHUB_ENV
-        fi
-
-    - name: Clone source code
-      working-directory: /workdir
-      run: |
-        # Check space
-        df -hT $PWD
-
-        # Clone with specified branch TAG and rename it to `openwrt`
-        git clone -b "${TAG}" $REPO_URL_IMM --single-branch --depth 1 openwrt
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        cd openwrt
-        git fetch --tags
-
-        # Removing Chinese Mirrors in cloned ImmortalWrt
-        PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
-        if [ -f "$PROJECT_MIRRORS_FILE" ]; then
-          sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
-        fi
-
-        # Save current path
-        echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-
-    - name: Performing a specific setup (1st script)
-      run: |
-        cd openwrt
-        chmod +x $GITHUB_WORKSPACE/$SPECIFIC_SETUP_SH
-
-        # Executes specific-setup.sh
-        $GITHUB_WORKSPACE/$SPECIFIC_SETUP_SH
-
-    - name: Update feeds
-      run: |
-        cd openwrt
-
-        # If there is a feeds.conf.default (containing custom feeds) file in the
-        # root of directory, then copy it
-        # [ -e $GITHUB_WORKSPACE/$FEEDS_CONF ] && cp $GITHUB_WORKSPACE/$FEEDS_CONF ./feeds.conf.default
-
-        # Update feeds
-        ./scripts/feeds update -a
-
-    - name: Install feeds
-      run: cd openwrt && ./scripts/feeds install -a
-
-    - name: Extract plugin list
-      id: extract-packages
-      run: |
-        echo "Extracting the plugin list from the source configuration file ${{ matrix.config_file }}..."
-        grep 'luci-app-' ${{ matrix.config_file }} | \
-          grep -v '^#' | \
-          grep -v 'is not set' | \
-          sed -e 's/CONFIG_PACKAGE_//g' -e 's/=y//g' | \
-          sort > packages.txt || true
-
-        echo "Check the generated file: "
-        if [ -s packages.txt ]; then
-          cat packages.txt
-          echo "File generated successfully!"
-        else
-          echo "Warning: packages.txt is empty! This may be because the luci-app plugin is missing from the source configuration file."
-          echo "No plugin information" > packages.txt
-        fi
-
-    - name: Upload plugin list products
-      uses: actions/upload-artifact@main
-      with:
-        name: package-list-${{ matrix.device }}
-        path: ${{ github.workspace }}/packages.txt
-
-    - name: Move custom init scripts for "UCI defaults" first boot (default-settings)
-      run: |
-        # Moves scripts and other file (if exist) that runs once when the device
-        # is first started (default-settings). Overwriting the LiBwrt files.
-        # In the unpacked firmware archive, it is located inside /etc/uci-defaults/
-        [ -e $GITHUB_WORKSPACE/$DEFAULT_SETTING ] && mv $GITHUB_WORKSPACE/$DEFAULT_SETTING openwrt/package/default-settings
-        [ -d $GITHUB_WORKSPACE/files ] && mv $GITHUB_WORKSPACE/files openwrt/files
-
-    - name: Performing git cloning external packages (2nd script)
-      run: |
-        cd openwrt
-        chmod +x $GITHUB_WORKSPACE/$GIT_CLONE_SH
-
-        # Executes git-clone.sh
-        $GITHUB_WORKSPACE/$GIT_CLONE_SH
-
-    - name: Apply custom .config (defconfig)
-      run: |
-        [ -e "${{ matrix.config_file }}" ] && mv ${{ matrix.config_file }} openwrt/.config
-        cd openwrt
-        ls -la
-        echo "Content .config"
-        cat .config
-        make defconfig
-        echo "Current diffconfig:"
-        ./scripts/diffconfig.sh
-
-    - name: Cache Toolchain
-      uses: HiGarfield/cachewrtbuild@main
-      if: env.CACHE_TOOLCHAIN != 'false'
-      with:
-        ccache: true
-        mixkey: ${{ github.workflow }}-${{ matrix.workflow_name }}-${{ hashFiles(matrix.config_file, '**/scripts-part*.sh') }}
-        prefix: ${{ env.OPENWRT_PATH }}
-
-    - name: Download packages
-      run: |
-         cd openwrt
-         make download -j$(nproc) || make download -j1 V=s
-         find dl -size -1024c -exec rm -f {} \;
-
-    - name: Compile firmware
-      run: |
-        echo "Check space before compilation:"
-        df -hT
-
-        echo "Compilation is performed using the $(nproc) thread..."
-        cd openwrt
-        make -j$(expr $(nproc) + 1) || make -j1 V=s
-
-        echo "Check space after compilation:"
-        df -hT
-
-    - name: Clean up temporary files after compilation
-      if: success()
-      run: |
-        echo "Compilation complete. Now it's time to clean up the temporary compilation directory..."
-        cd openwrt
-        rm -rf build_dir tmp
-        echo "Temporary files cleaned up!"
-
-    - name: Organize firmware files
-      id: organize
-      run: |
-        cd openwrt/bin/targets/*/*
-        rm -rf packages
-        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
-        cat $GITHUB_ENV
-
-    - name: Upload firmware directory
-      uses: actions/upload-artifact@main
-      with:
-        name: firmware-${{ matrix.device }}
-        path: ${{ env.FIRMWARE_PATH }}
-
+    uses: ./.github/workflows/_openwrt-build-device.yml
+    with:
+      device: ${{ matrix.device }}
+      config_file: ${{ matrix.config_file }}
+      workflow_name: ${{ matrix.workflow_name }}
+      repo_url: https://github.com/LiBwrt/LibWrt.git
+      repo_branch: ${{ github.event.inputs.tag }}
+      extra_config_file: ${{ github.event.inputs.docker == 'true' && './config/docker.config' || '' }}
 
   publish_release:
     name: Merge and release firmware
     needs: build
     runs-on: ubuntu-22.04
     if: success()
-
     steps:
-    - name: Download all firmware products
-      uses: actions/download-artifact@v4
-      with:
-        path: all-artifacts
+      - name: Checkout repository
+        uses: actions/checkout@main
 
-    - name: Rename the firmware file to avoid conflicts
-      run: |
-        echo "Start renaming common files to prevent upload conflicts..."
-        for dir in all-artifacts/firmware-*; do
-          DEVICE_NAME=$(basename "$dir" | sed 's/firmware-//')
-          echo "Processing device: $DEVICE_NAME"
-          cd "$dir"
-          for file in version.buildinfo sha256sums profiles.json config.buildinfo feeds.buildinfo; do
-            if [ -f "$file" ]; then
-              mv "$file" "${DEVICE_NAME}-${file}"
-              echo "  Rename: $file -> ${DEVICE_NAME}-${file}"
-            fi
-          done
-          # While you're at it, also fix the filename references in sha256sums (optional)
-          if [ -f "${DEVICE_NAME}-sha256sums" ]; then
-            sed -i "s/ \*/ ${DEVICE_NAME}-/" "${DEVICE_NAME}-sha256sums"
-          fi
-          cd ../..
-        done
-        echo "All files have been renamed!"
-
-    - name: Generate unified publishing tags and content.
-      id: release-meta
-      run: |
-        DATE_SUFFIX=$(date +"%Y%m%d-%H%M")
-        RELEASE_TAG="IPQ60xx-25.12-${{ env.REPO_BRANCH }}-${DATE_SUFFIX}"
-        echo "Generated unified release tag: $RELEASE_TAG"
-        echo "release_tag=$RELEASE_TAG" >> $GITHUB_ENV
-
-        echo "### Firmware" > release-body.md
-        echo "" >> release-body.md
-        echo "This release includes the following devices:" >> release-body.md
-        for dir in all-artifacts/firmware-*; do
-          DEVICE_NAME=$(basename "$dir" | sed 's/firmware-//')
-          echo "- **$DEVICE_NAME**" >> release-body.md
-        done
-        echo "" >> release-body.md
-        echo "**Source code repository:** \`${{ env.REPO_URL_IMM }}\`" >> release-body.md
-        echo "**Branch:** \`${{ env.REPO_BRANCH }}\`" >> release-body.md
-        echo "" >> release-body.md
-        echo "---" >> release-body.md
-
-        echo "### Detailed list of plugins" >> release-body.md
-        # Iterate through the plugin list directory for each device.
-        for dir in all-artifacts/package-list-*; do
-          DEVICE_NAME=$(basename "$dir" | sed 's/package-list-//')
-
-          echo "" >> release-body.md
-          echo "#### 🔌 $DEVICE_NAME" >> release-body.md
-          sed 's/^/- /' "$dir/packages.txt" >> release-body.md
-        done
-
-    - name: Create a unified Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ env.release_tag }}
-        body_path: release-body.md
-        files: all-artifacts/firmware-*/*
-
-    - name: Clean up old Releases
-      uses: dev-drprasad/delete-older-releases@v0.1.0
-      with:
-        keep_latest: 10
-        delete_tags: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Clean up old workflow execution records
-      uses: GitRML/delete-workflow-runs@main
-      with:
-        retain_days: 5
-        keep_minimum_runs: 5
-
+      - name: Publish release
+        uses: ./.github/actions/openwrt-publish-release
+        with:
+          release-tag-prefix: IPQ60xx-25.12-${{ github.event.inputs.tag }}
+          source-url: ${{ github.inputs.repo_url }}
+          source-branch: ${{ github.event.inputs.tag }}
+          release-files: all-artifacts/firmware-*/*
