@@ -210,7 +210,7 @@ jobs:
         if: ${{ inputs.cache_toolchain != 'false' }}
         with:
           ccache: true
-          mixkey: ${{ github.workflow }}-${{ inputs.workflow_name }}-${{ hashFiles(inputs.config_file, 'specific-setup.sh', 'git-clone.sh')) }}
+          mixkey: ${{ github.workflow }}-${{ inputs.workflow_name }}-${{ hashFiles(inputs.config_file, 'specific-setup.sh', 'git-clone.sh') }}
           prefix: ${{ steps.clone-source.outputs.openwrt-path }}
 
       - name: Download packages
