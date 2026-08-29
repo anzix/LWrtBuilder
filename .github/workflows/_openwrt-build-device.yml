@@ -227,9 +227,6 @@ jobs:
             cat "${{ inputs.extra_config_file }}" >> openwrt/.config
           fi
           cd openwrt
-          echo "::group::Current .config"
-          cat .config
-          echo "::endgroup::"
           echo "::group::Pre-defconfig workspace snapshot"
           pwd
           ls -ld package/default-settings files .config 2>/dev/null || true
