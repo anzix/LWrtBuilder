@@ -151,12 +151,9 @@ jobs:
         shell: bash
         working-directory: /workdir
         run: |
-          # Check space
-          df -hT $PWD
-
           # Clone with specified branch TAG and rename it to `openwrt`
-          git clone -b "${TAG}" $REPO_URL_IMM --single-branch --depth 1 openwrt
-          ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          git clone -b "${{ inputs.repo_branch }}" "${{ inputs.repo_url }}" --single-branch --depth 1 openwrt
+          ln -sf /workdir/openwrt "$GITHUB_WORKSPACE/openwrt"
           cd openwrt
           git fetch --tags || true
 
