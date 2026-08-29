@@ -202,6 +202,39 @@ jobs:
         shell: bash
         run: cd openwrt && ./scripts/feeds install -a
 
+      - name: Move custom init scripts for "UCI defaults" first boot (default-settings)
+        run: |
+          # Moves scripts and other file (if exist) that runs once when the device
+          # is first started (default-settings). Overwriting the LiBwrt files.
+          # In the unpacked firmware archive, it is located inside /etc/uci-defaults/
+          [ -e "$GITHUB_WORKSPACE/${{ inputs.default_setting }}" ] && mv "$GITHUB_WORKSPACE/${{ inputs.default_setting }}" openwrt/package/default-settings
+          [ -d "$GITHUB_WORKSPACE/files" ] && mv "$GITHUB_WORKSPACE/files" openwrt/files
+
+      - name: Performing git cloning external packages (2nd script)
+        run: |
+          cd openwrt
+          chmod +x "$GITHUB_WORKSPACE/${{ inputs.diy_p2_sh }}"
+
+          # Executes git-clone.sh
+          "$GITHUB_WORKSPACE/${{ inputs.diy_p2_sh }}"
+
+      - name: Apply custom .config (defconfig)
+        run: |
+          # Pastins extra strings into defconfig (docker)
+          if [ -n "${{ inputs.extra_config_file }}" ] && [ -e "${{ inputs.extra_config_file }}" ]; then
+            cat "${{ inputs.extra_config_file }}" >> openwrt/.config
+          fi
+          cd openwrt
+          echo "::group::Pre-defconfig workspace snapshot"
+          pwd
+          ls -ld package/default-settings files .config 2>/dev/null || true
+          grep -E '^(CONFIG_TARGET|CONFIG_PACKAGE_(docker|dockerd|luci-app-dockerman|containerd|runc))' .config || true
+          echo "::endgroup::"
+          make defconfig
+          echo "::group::Current diffconfig"
+          ./scripts/diffconfig.sh
+          echo "::endgroup::"
+
       - name: Cache toolchain
         uses: HiGarfield/cachewrtbuild@main
         if: ${{ inputs.cache_toolchain != 'false' }}
