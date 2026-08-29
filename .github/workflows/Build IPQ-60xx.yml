@@ -23,7 +23,7 @@ jobs:
       matrix:
         include:
           - device: AXT-1800
-            config_file: './config/axt1800.config'
+            config_file: ./config/axt1800.config
             workflow_name: 'AXT-1800'
     uses: ./.github/workflows/_openwrt-build-device.yml
     with:

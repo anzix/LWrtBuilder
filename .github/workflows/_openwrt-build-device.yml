@@ -220,6 +220,8 @@ jobs:
 
       - name: Apply custom .config (defconfig)
         run: |
+          # Moving my own .config (defconfig) to a cloned OpenWRT
+          [ -e "${{ inputs.config_file }}" ] && mv "${{ inputs.config_file }}" openwrt/.config
           # Pastins extra strings into defconfig (docker)
           if [ -n "${{ inputs.extra_config_file }}" ] && [ -e "${{ inputs.extra_config_file }}" ]; then
             cat "${{ inputs.extra_config_file }}" >> openwrt/.config
