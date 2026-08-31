@@ -1,4 +1,4 @@
-# Авто-сборщик LiBwrt (форк ImmortalWrt с патчами для IPQ60XX и IPQ807X)
+# Авто-сборщик [LiBwrt](https://github.com/LiBwrt/LibWrt) (форк ImmortalWrt с патчами для IPQ60XX и IPQ807X)
 
 ## Информация по поддерживаемым устройствам
 
