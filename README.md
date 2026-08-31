@@ -42,57 +42,27 @@
     После прошиваем нажав `Continue`, подключаемся к панели только тогда когда
     индикатор на роутере будет гореть статично синим цветом
 
-## Полезная информация
+## Преимущества
 
-### Официальный репозиторий kmod и добавление feed'а
-
-Вы можете использовать репозиторий kmod из ImmortalWrt если в процессе сборки
-прошивки был зафиксирован хеш vermagic из ImmortalWrt (смотрите лог в Github
-Actions на этапе `Performing a specific setup (1st script)`)
-
-```txt
-...
-✅ Kernel version matches, getting kmod hash and writing vermagic file ...
-Download successful, current vermagic:
-0ca8e90c8f66217c019a184e53b67af4
-```
-
-Как загрузитесь в устройство проверьте вашу версию ядра используя команду и
-скопируйте хеш
-
-```sh
-apk info kernel
-
-# У меня указан 0ca8e90c8f66217c019a184e53b67af4 что соответствует действительности
-```
-
-Далее [смотрим репозиторий kmod вашего устройства](https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/)
-и сверяем с вашей текущей версией. Если всё совпадает значит можно использовать
-данный kmod репозиторий
-
-После чего указываем в `/etc/apk/repositories.d/distfeeds.list` в конце строку
-с указанием kmod репозитория в соответствии с вашей версией ядра и хешем vermagic.
-Вот пример
-
-```txt
-https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/qualcommax/ipq60xx/kmods/6.12.84-1-6f890802eaff7c9b13ea5a148e6d0e9d/packages.adb
-```
-
-После, сохраняем и обновляем индексы командой `apk update`. И проверяем на
-установку какого-либо kmod модуля ядра, укав в поиске `kmod`
-
-Если при установке нет никаких ошибок значит вы всё правильно настроили.
+- Автоматический зафиксированный vermagic для использования официального kmod
+  репозитория ImmortalWrt
+- Встроенные пакеты для ускорения интернета 🚀
+- Настроенный из коробки FullCone NAT, ZRam
+- Дополнительный набор пакетов (современная тема, файловый менеджер, менеджер дисков)
+- Настроенный https с самоподписанным сертификатом (openssl)
+- Скрипт для расширения встроенной памяти роутера
 
 ## Если вас не устраивают мои настройки?
 
 Тогда [форкайте](https://github.com/anzix/LWrtBuilder/fork) и изменяйте под ваши
 нужды
 
-- defconfig (модули ядра, наличия каких-то оф. пакетов, feed'ы, и т.д): Для каждого
-  устройства собственный `.config`, как например для [axt1800.config](https://github.com/anzix/LWrtBuilder/tree/main/config)
+- defconfig (модули ядра, наличия каких-то оф. пакетов, feed репозитории и т.д):
+  Для каждого устройства собственный `.config`, как например для [axt1800.config](https://github.com/anzix/LWrtBuilder/tree/main/config)
 - Настройки при первом запуске: [zzz-default-settings](https://github.com/anzix/LWrtBuilder/blob/main/default-settings/files/zzz-default-settings)
 - Кастомные пакеты: [git-clone.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/git-clone.sh)
-- Специфичные настройки (фиксирование хеша vermagic, применение собственных патчей и т.д): [specific-setup.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/specific-setup.sh)
+- Специфичные настройки (фиксирование хеша vermagic, применение собственных
+  патчей и т.д): [specific-setup.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/specific-setup.sh)
 
 До начала сборки прошивки необходимо в вашем форк репозитории **зайти в
 Settings - Actions, General** и в **`Workflow permissions`** поменять с **`Read
@@ -108,6 +78,12 @@ Skip retry — your GitHub token/PAT does not have the required permission to cr
 ⚠️ Unexpected error fetching GitHub release for tag refs/heads/main: HttpError: Resource not accessible by integration - https://docs.github.com/rest/releases/releases#create-a-release
 Error: Resource not accessible by integration - https://docs.github.com/rest/releases/releases#create-a-release
 ```
+
+## Время сборки
+
+В первый раз прошивка собирается где-то за 2 часа (может чуть больше). После успешной
+сборки **и создания кеша** при повторной сборки - 1 час (иногда чуть дольше, +15-40
+минут). Если повезёт то вообще за 40~50 минут.
 
 ## Проблемы и способы их решения
 
@@ -150,48 +126,13 @@ Error: Resource not accessible by integration - https://docs.github.com/rest/rel
 
 ## TODO
 
-- [x] ~~Исправить workflow связанный с медленной сборкой~~. В среднем прошивка
-  собирается за 1 час (иногда чуть дольше, +15-40 минут). Если повезёт то вообще
-  за 50 минут
-
-- [x] ~Нужно как-то решить проблему с отсутствием cron~
-
-  Чтобы решить проблему
-
-  ```txt
-  grep: /etc/crontabs/root: No such file or directory
-  ```
-
-- [x] ~~Исправить отсутствие пакетов для русификации `luci-i18n-*-ru`~~
-- [x] Проверить работу `specific-setup.sh`, и исправить создание собственного vermagic
-
-  Чтобы можно было собрать кастомное ядро linux не конфликтующее с официальными
-  kmod модулями
-
-
-
 ## Благодарность
 
 - [qlxi/GL_AXT1800](https://github.com/qlxi/GL_AXT1800)
+- [m0eak/Openwrt_Builder](https://github.com/m0eak/Openwrt_Builder)
+- [P3TERX/Actions-OpenWrt](https://github.com/P3TERX/Actions-OpenWrt)
 - [wukongdaily/AutoBuildImmortalWrt](https://github.com/wukongdaily/AutoBuildImmortalWrt)
 
-И другие
+## Лицензия
 
-- [Microsoft Azure](https://azure.microsoft.com)
-- [GitHub Actions](https://github.com/features/actions)
-- [OpenWrt](https://github.com/openwrt/openwrt)
-- [JiaY-shi/openwrt](https://github.com/JiaY-shi/openwrt.git)
-- [tmate](https://github.com/tmate-io/tmate)
-- [mxschmitt/action-tmate](https://github.com/mxschmitt/action-tmate)
-- [csexton/debugger-action](https://github.com/csexton/debugger-action)
-- [Cowtransfer](https://cowtransfer.com)
-- [WeTransfer](https://wetransfer.com/)
-- [Mikubill/transfer](https://github.com/Mikubill/transfer)
-- [softprops/action-gh-release](https://github.com/softprops/action-gh-release)
-- [ActionsRML/delete-workflow-runs](https://github.com/ActionsRML/delete-workflow-runs)
-- [dev-drprasad/delete-older-releases](https://github.com/dev-drprasad/delete-older-releases)
-- [peter-evans/repository-dispatch](https://github.com/peter-evans/repository-dispatch)
-
-## License
-
-[MIT](https://github.com/P3TERX/Actions-OpenWrt/blob/main/LICENSE) © [**P3TERX**](https://p3terx.com)
+[MIT](https://github.com/anzix/LWrtBuilder/blob/main/LICENSE)
