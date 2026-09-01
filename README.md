@@ -50,7 +50,7 @@
 - Настроенный из коробки FullCone NAT, ZRam
 - Дополнительный набор пакетов (современная тема, файловый менеджер, менеджер дисков)
 - Настроенный https с самоподписанным сертификатом (openssl)
-- Скрипт для расширения встроенной памяти роутера
+- Встроенный [скрипт для расширения встроенной памяти роутера](https://github.com/anzix/LWrtBuilder/blob/main/files/usr/share/extpart.sh)
 
 ## Если вас не устраивают мои настройки?
 
@@ -59,7 +59,7 @@
 
 - defconfig (модули ядра, наличия каких-то оф. пакетов, feed репозитории и т.д):
   Для каждого устройства собственный `.config`, как например для [axt1800.config](https://github.com/anzix/LWrtBuilder/tree/main/config)
-- Настройки при первом запуске: [zzz-default-settings](https://github.com/anzix/LWrtBuilder/blob/main/default-settings/files/zzz-default-settings)
+- Настройки при первом запуске: [zzz-default-settings](https://github.com/anzix/LWrtBuilder/blob/main/default-settings-anzix/files/zzz-default-settings)
 - Кастомные пакеты: [git-clone.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/git-clone.sh)
 - Специфичные настройки (фиксирование хеша vermagic, применение собственных
   патчей и т.д): [specific-setup.sh](https://github.com/anzix/LWrtBuilder/blob/main/sh/specific-setup.sh)

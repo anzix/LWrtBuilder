@@ -1,6 +1,6 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=default-settings
+PKG_NAME:=default-settings-anzix
 PKG_VERSION:=1
 PKG_RELEASE:=1
 PKG_LICENSE:=GPLv3
@@ -8,7 +8,7 @@ PKG_LICENSE_FILES:=LICENSE
 
 include $(INCLUDE_DIR)/package.mk
 
-define Package/default-settings
+define Package/default-settings-anzix
 	SECTION:=luci
 	CATEGORY:=LuCI
 	TITLE:=My Default Settings
@@ -16,7 +16,7 @@ define Package/default-settings
 	DEPENDS:=+luci
 endef
 
-define Package/default-settings/description
+define Package/default-settings-anzix/description
 	My Default Settings.
 endef
 
@@ -24,9 +24,9 @@ endef
 define Build/Compile
 endef
 
-define Package/default-settings/install
+define Package/default-settings-anzix/install
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/zzz-default-settings $(1)/etc/uci-defaults/zzz-default-settings
 endef
 
-$(eval $(call BuildPackage,default-settings))
+$(eval $(call BuildPackage,default-settings-anzix))
