@@ -25,16 +25,6 @@ declare -A REPOS=(
     # Used by: CONFIG_PACKAGE_fancontrol=y
     ["https://github.com/m0eak/fancontrol"]=""
 
-    # Автоматически получает отформатированное расширение раздела и автоматически
-    # монтирует его
-    # Used by: CONFIG_PACKAGE_luci-app-partexp=y
-    # ["https://github.com/sirpdboy/luci-app-partexp"]=""
-
-    # Данный репозиторий отсюда более новый и с исправлениями, в отличие от
-    # официального репозитория ImmortalWrt
-    # Used by: CONFIG_PACKAGE_luci-app-tailscale-community=y
-    # ["https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git"]=""
-
     # Used by: CONFIG_PACKAGE_luci-app-nikki=y
     ["https://github.com/nikkinikki-org/OpenWrt-nikki"]=""
 
@@ -43,6 +33,9 @@ declare -A REPOS=(
 
     # Used by: CONFIG_PACKAGE_luci-proto-amneziawg=y
     ["https://github.com/Slava-Shchipunov/awg-openwrt"]=""
+
+    # Used by: CONFIG_PACKAGE_luci-app-wizard=y
+    ["https://github.com/kiddin9/luci-app-wizard"]=""
 )
 
 CONFLICTING_MAKEFILE_KEYWORDS=()
