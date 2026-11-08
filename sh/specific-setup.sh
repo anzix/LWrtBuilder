@@ -47,7 +47,7 @@ if [[ "$WORKFLOW_NAME" == "AXT-1800" ]]; then
 
    # Динамически получить хеш Kmod и обновить конфигурацию.
    # Получаем последнюю версию ядра из ImmortalWrt
-   BASE_URL="https://downloads.immortalwrt.org/releases/25.12.1/targets/qualcommax/ipq60xx/kmods/"
+   BASE_URL="https://downloads.immortalwrt.org/releases/$TAG/targets/qualcommax/ipq60xx/kmods/"
    REMOTE_KERNEL_VERSION=$(curl -s $BASE_URL | grep -oP "$KERNEL_VERSION" | head -n 1)
 
    # Сравнение и получение хеш Kmod
