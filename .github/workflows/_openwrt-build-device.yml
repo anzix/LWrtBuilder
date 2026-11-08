@@ -144,7 +144,8 @@ jobs:
 
           # Saving variables for further work
           echo "WORKFLOW_NAME=${{ inputs.workflow_name }}" >> "$GITHUB_ENV"
-          echo "TAG=${${{ inputs.repo_branch }}#v}" >> "$GITHUB_ENV"
+          TAG="${{ inputs.repo_branch }}"
+          echo "TAG=${TAG#v}" >> "$GITHUB_ENV"
 
       - name: Clone firmware source
         id: clone-source
