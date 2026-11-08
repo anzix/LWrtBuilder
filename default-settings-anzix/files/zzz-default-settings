@@ -68,7 +68,7 @@ if [ "$(grep -c "AXT1800" /etc/board.json)" -ne '0' ];then
 fi
 
 # Basic system settings (time zone, hostname, ntp and etc)
-uci set system.@system[0].timezone="Asia/Yekaterinburg"
+uci set system.@system[0].timezone="<+05>-5"
 uci set system.@system[0].zonename="Asia/Yekaterinburg"
 # uci set system.@system[0].hostname=''
 uci del system.ntp.server
