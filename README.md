@@ -124,7 +124,36 @@ Error: Resource not accessible by integration - https://docs.github.com/rest/rel
    Переходим в `System` - `General Settings` и в `Local Time` жмём `Sync with browser`,
    после чего обновление индексов пакетов будет происходить нормально
 
+3. Беспроводная сеть Wifi (5Ghz) постоянно разрывает соединение с подключённым
+   устройством
+
+   При проверке командой `logread | grep hostapd | tail -n 100` обнаружил в
+   когда произёл обрыв соединения
+
+   ```txt
+   Sat Oct 24 11:20:41 2026 daemon.info hostapd: phy0-ap0: STA xx:xx:xx:xx:xx:67 IEEE 802.11: disconnected due to excessive missing ACKs
+   Sat Oct 24 11:20:41 2026 daemon.notice hostapd: phy0-ap0: AP-STA-DISCONNECTED xx:xx:xx:xx:xx:67
+   Sat Oct 24 11:20:43 2026 daemon.info hostapd: phy0-ap0: STA xx:xx:xx:xx:xx:67 IEEE 802.11: authenticated
+   Sat Oct 24 11:20:43 2026 daemon.info hostapd: phy0-ap0: STA xx:xx:xx:xx:xx:67 IEEE 802.11: associated (aid 2)
+   Sat Oct 24 11:20:43 2026 daemon.notice hostapd: phy0-ap0: AP-STA-CONNECTED xx:xx:xx:xx:xx:67 auth_alg=open
+   Sat Oct 24 11:20:43 2026 daemon.info hostapd: phy0-ap0: STA xx:xx:xx:xx:xx:67 RADIUS: starting accounting session A4ED767DCB6A0D74
+   Sat Oct 24 11:20:43 2026 daemon.info hostapd: phy0-ap0: STA xx:xx:xx:xx:xx:67 WPA: pairwise key handshake completed (RSN)
+   Sat Oct 24 11:20:43 2026 daemon.notice hostapd: phy0-ap0: EAPOL-4WAY-HS-COMPLETED xx:xx:xx:xx:xx:67
+   ```
+
+   Ошибка `disconnected due to excessive missing ACKs`
+
+   Возможные решения проблемы
+
+   - В Luci - Сеть - Беспроводная сеть - Редактируем 5ghz точку - ниже в `Настройка
+     сети` жмём `Расширенные настройки`, в самом низу убрать галочку `Не ассоциировать
+     при низком подтверждении`
+
+
 ## TODO
+
+- [ ] Встроить пакет [sing-box-extended](https://github.com/shtorm-7/sing-box-extended)
+- [ ] Встроить пакет [zapret2-openwrt](https://github.com/1andrevich/zapret2-openwrt)
 
 ## Благодарность
 
