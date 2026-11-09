@@ -41,7 +41,7 @@ on:
         type: string
       default_setting:
         description: Custom default settings package path.
-        default: ./default-settings
+        default: ./default-settings-anzix
         type: string
       cache_toolchain:
         description: Whether to enable toolchain cache.
