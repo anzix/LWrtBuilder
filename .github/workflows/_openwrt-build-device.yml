@@ -203,12 +203,12 @@ jobs:
         shell: bash
         run: cd openwrt && ./scripts/feeds install -a
 
-      - name: Move custom init scripts for "UCI defaults" first boot (default-settings)
+      - name: Move custom init scripts for "UCI defaults" first boot (default-settings-anzix)
         run: |
           # Moves scripts and other file (if exist) that runs once when the device
           # is first started (default-settings). Overwriting the LiBwrt files.
           # In the unpacked firmware archive, it is located inside /etc/uci-defaults/
-          [ -e "$GITHUB_WORKSPACE/${{ inputs.default_setting }}" ] && mv "$GITHUB_WORKSPACE/${{ inputs.default_setting }}" openwrt/package/default-settings
+          [ -e "$GITHUB_WORKSPACE/${{ inputs.default_setting }}" ] && mv "$GITHUB_WORKSPACE/${{ inputs.default_setting }}" openwrt/package/default-settings-anzix
           [ -d "$GITHUB_WORKSPACE/files" ] && mv "$GITHUB_WORKSPACE/files" openwrt/files
 
       - name: Performing git cloning external packages (2nd script)
